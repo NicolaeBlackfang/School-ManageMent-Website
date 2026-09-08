@@ -50,15 +50,15 @@ const AdminNoticeBoard = () => {
 
     const storedUser = JSON.parse(localStorage.getItem('schoolUser'));
     try {
-      const config = { 
-        headers: { 
+      const config = {
+        headers: {
           Authorization: `Bearer ${storedUser.token}`,
           'X-Admin-Password': adminVerifyPassword // Pass secure validation string natively inside customized headers
-        } 
+        }
       };
 
       await axios.delete(`http://localhost:5000/api/notices/${selectedNoticeId}`, config);
-      
+
       setMessage({ text: '🗑️ Notice wiped cleanly from system layers after credentials authorization pass.', type: 'success' });
       setIsPasswordModalOpen(false);
       fetchNotices();
@@ -79,7 +79,7 @@ const AdminNoticeBoard = () => {
       formData.append('title', title);
       formData.append('content', content);
       formData.append('targetAudience', targetAudience);
-      
+
       if (pdfFile) {
         formData.append('pdfFile', pdfFile);
       }
@@ -92,14 +92,14 @@ const AdminNoticeBoard = () => {
       };
 
       await axios.post('http://localhost:5000/api/notices', formData, config);
-      
+
       setMessage({ text: '🚀 Announcement bulletin and official circular PDF broadcasted live!', type: 'success' });
-      
+
       setTitle('');
       setContent('');
       setTargetAudience('all');
       setPdfFile(null);
-      
+
       document.getElementById('noticePdfInput').value = '';
       fetchNotices();
     } catch (err) {
@@ -119,7 +119,7 @@ const AdminNoticeBoard = () => {
 
   return (
     <div className="max-w-5xl mx-auto p-4 sm:p-8 space-y-8">
-      
+
       {/* Creation form workspace control panel */}
       <div className="bg-white p-6 sm:p-8 rounded-2xl border border-gray-100 shadow-sm space-y-6">
         <div>
@@ -157,9 +157,9 @@ const AdminNoticeBoard = () => {
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Attach Official Circular Document (PDF Only)</label>
             <div className="border-2 border-dashed border-gray-200 hover:border-blue-500 transition-colors rounded-xl p-4 bg-gray-50 flex items-center justify-between gap-4">
-              <input 
+              <input
                 id="noticePdfInput"
-                type="file" 
+                type="file"
                 accept="application/pdf"
                 onChange={(e) => setPdfFile(e.target.files[0])}
                 className="text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
@@ -190,23 +190,25 @@ const AdminNoticeBoard = () => {
             <div className="space-y-1 max-w-2xl">
               <div className="flex items-center gap-2 flex-wrap">
                 <h4 className="text-base font-bold text-gray-900 tracking-tight">{n.title}</h4>
-                <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${
-                  n.targetAudience === 'all' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                  n.targetAudience === 'student' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                  'bg-purple-50 text-purple-700 border-purple-100'
-                }`}>{n.targetAudience}</span>
+                <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${n.targetAudience === 'all' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                    n.targetAudience === 'student' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                      'bg-purple-50 text-purple-700 border-purple-100'
+                  }`}>{n.targetAudience}</span>
               </div>
               <p className="text-xs text-gray-500 leading-relaxed font-medium whitespace-pre-wrap">{n.content}</p>
-              
+
+              {/* Look inside the n.attachmentUrl condition block inside AdminNoticeBoard.jsx and update it to this: */}
               {n.attachmentUrl && (
                 <div className="pt-1.5">
-                  <a href={`http://localhost:5000${n.attachmentUrl}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[11px] text-blue-600 font-bold hover:underline">
+                  {/* 🟢 FIXED: Points directly to your secure Cloudinary absolute URL link channel */}
+                  <a href={n.attachmentUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[11px] text-blue-600 font-bold hover:underline">
                     📄 View Uploaded Circular PDF File
                   </a>
                 </div>
               )}
+
             </div>
-            
+
             <div className="flex flex-col items-end gap-2 shrink-0 self-end sm:self-start">
               <span className="text-[10px] font-mono text-gray-400 font-medium">{new Date(n.createdAt).toLocaleDateString()}</span>
               <button

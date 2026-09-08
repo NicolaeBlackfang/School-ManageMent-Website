@@ -18,7 +18,7 @@ const SharedNoticeBoard = () => {
         setLoading(false);
         return;
       }
-      
+
       setUserRole(storedUser.role || 'student');
 
       try {
@@ -45,9 +45,9 @@ const SharedNoticeBoard = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-8 space-y-6">
-      
+
       {/* Dynamic Back Navigation Pointers depending on current active user role context session */}
-      <button 
+      <button
         onClick={() => navigate(userRole === 'teacher' ? '/teacher/dashboard' : '/student/dashboard')}
         className="text-xs font-bold text-gray-500 bg-white border border-gray-200 px-3 py-1.5 rounded-xl hover:text-gray-900 transition-colors shadow-xs cursor-pointer"
       >
@@ -68,14 +68,13 @@ const SharedNoticeBoard = () => {
           </div>
         ) : notices.map((notice) => (
           <div key={notice._id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-3 hover:border-gray-200 transition-all relative overflow-hidden">
-            
+
             {/* Visual audience filter badge indicator visible strictly for teachers auditing feeds */}
             {userRole === 'teacher' && (
-              <span className={`absolute top-0 right-0 text-[8px] font-black uppercase px-2 py-0.5 rounded-bl border-l border-b tracking-wider ${
-                notice.targetAudience === 'teacher' ? 'bg-purple-50 text-purple-700 border-purple-100' :
-                notice.targetAudience === 'student' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                'bg-blue-50 text-blue-700 border-blue-100'
-              }`}>
+              <span className={`absolute top-0 right-0 text-[8px] font-black uppercase px-2 py-0.5 rounded-bl border-l border-b tracking-wider ${notice.targetAudience === 'teacher' ? 'bg-purple-50 text-purple-700 border-purple-100' :
+                  notice.targetAudience === 'student' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                    'bg-blue-50 text-blue-700 border-blue-100'
+                }`}>
                 Audience: {notice.targetAudience}
               </span>
             )}
@@ -87,12 +86,14 @@ const SharedNoticeBoard = () => {
               </div>
             </div>
             <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">{notice.content}</p>
-            
+
+            {/* Look inside the notice.attachmentUrl condition block inside noticeboard.jsx and update it to this: */}
             {notice.attachmentUrl && (
               <div className="pt-2">
-                <a 
-                  href={`http://localhost:5000${notice.attachmentUrl}`} 
-                  target="_blank" 
+                {/* 🟢 FIXED: Bypasses localhost entirely, routing students and teachers to the absolute cloud bucket target */}
+                <a
+                  href={notice.attachmentUrl}
+                  target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-lg text-xs transition-colors border border-blue-100"
                 >
@@ -100,6 +101,7 @@ const SharedNoticeBoard = () => {
                 </a>
               </div>
             )}
+
           </div>
         ))}
       </div>

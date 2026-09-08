@@ -15,9 +15,14 @@ frontend/dist/
 frontend/build/
 backend/dist/
 
+# Ignore local uploaded files/notices
+backend/uploads/
+**/uploads/
+
 # Environment / Secret Files
 .env
 .env.local
+atlas-credentials.env
 **/.env
 *.local
 
