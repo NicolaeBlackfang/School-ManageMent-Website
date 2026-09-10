@@ -7,6 +7,7 @@ const Teacher = require('../models/Teacher');
 const Student = require('../models/Student');
 const User = require('../models/User');
 const Attendance = require('../models/Attendance');
+const SchoolConfig = require('../models/SchoolConfig');
 
 // @desc    Get the logged-in teacher's assigned class and student roster
 // @route   GET /api/teacher/my-class
@@ -82,6 +83,86 @@ router.post('/attendance', protect, authorizeRoles('teacher'), async (req, res) 
         res.status(400).json({ success: false, message: error.message });
     }
 });
+
+// @desc    Fetch submission heatmaps and session statuses for a specific month
+// @route   GET /api/teacher/attendance-calendar-heatmap/:classId
+router.get('/attendance-calendar-heatmap/:classId', protect, authorizeRoles('teacher', 'admin'), async (req, res) => {
+    const { classId } = req.params;
+    const { year, month } = req.query;
+
+    try {
+        // 1. Fetch config document as raw lean object, fallback safely if uninitialized
+        const schoolConfig = await SchoolConfig.findOne().lean() || {};
+
+        // Provide strict array fallbacks representing Friday & Saturday off
+        const weeklyOffDays = schoolConfig.weeklyOffDays || [5, 6];
+        const holidays = schoolConfig.holidays || [];
+        const sessionStartDate = schoolConfig.sessionStartDate || new Date(new Date().getFullYear(), 0, 1);
+
+        // 2. Parse the dynamic dates coming from the frontend params safely
+        const parsedYear = parseInt(year) || new Date().getFullYear();
+        const parsedMonth = parseInt(month) || (new Date().getMonth() + 1);
+
+        const startDate = new Date(parsedYear, parsedMonth - 1, 1);
+        const endDate = new Date(parsedYear, parsedMonth, 0, 23, 59, 59, 999);
+
+        // 3. Query all attendance sheets submitted for this class room target zone
+        const submittedSheets = await Attendance.find({
+            classId: classId,
+            date: { $gte: startDate, $lte: endDate }
+        }).select('date').lean();
+
+        // 4. Safely convert native Date objects into clean "YYYY-MM-DD" string formats
+        const submittedDates = submittedSheets.map(sheet => {
+            if (!sheet.date) return null;
+            const d = new Date(sheet.date);
+            const padDay = d.getDate() < 10 ? `0${d.getDate()}` : d.getDate();
+            const padMonth = (d.getMonth() + 1) < 10 ? `0${d.getMonth() + 1}` : d.getMonth() + 1;
+            return `${d.getFullYear()}-${padMonth}-${padDay}`;
+        }).filter(Boolean); // Cleans out any potential null values safely
+
+        res.json({
+            success: true,
+            submittedDates, // Sends clean string array: ["2026-09-10", "2026-09-11"]
+            weeklyOffDays,
+            holidays,
+            sessionStart: sessionStartDate
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+
+
+// @desc    Get existing attendance data records for a specific date
+// @route   GET /api/teacher/attendance-by-date/:classId
+router.get('/attendance-by-date/:classId', protect, authorizeRoles('teacher', 'admin'), async (req, res) => {
+    const { classId } = req.params;
+    const { date } = req.query; // Expects "YYYY-MM-DD" string format
+
+    try {
+        const targetDate = new Date(date);
+        const startOfDay = new Date(targetDate.setHours(0, 0, 0, 0));
+        const endOfDay = new Date(targetDate.setHours(23, 59, 59, 999));
+
+        // Search for a sheet compiled for this class on the target day
+        const existingSheet = await Attendance.findOne({
+            classId,
+            date: { $gte: startOfDay, $lte: endOfDay }
+        }).lean();
+
+        if (!existingSheet) {
+            return res.json({ success: true, exists: false, records: [] });
+        }
+
+        res.json({ success: true, exists: true, records: existingSheet.records });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+
 // @desc    Get comprehensive yearly attendance percentage analytics for a class
 // @route   GET /api/teacher/attendance-analytics/:classId
 // @access  Private (Teachers & Admins only)

@@ -94,6 +94,22 @@ const StudentDashboard = () => {
                         </Link>
                     </div>
 
+                    {/* Upgraded Attendance Tracker Card Module for StudentDashboard.jsx */}
+                    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between space-y-4 hover:border-gray-200 transition-colors">
+                        <div className="space-y-2">
+                            <div className="h-10 w-10 bg-emerald-50 text-xl rounded-xl flex items-center justify-center">📈</div>
+                            <h3 className="text-lg font-bold text-gray-900">Attendance Calendar</h3>
+                            <p className="text-sm text-gray-500 leading-relaxed">Access your personalized daily check-in histories, review monthly presence analytics grids, and monitor your system leave records live.</p>
+                        </div>
+                        <Link
+                            to="/student/attendance"
+                            className="w-full text-center py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors block"
+                        >
+                            Open Attendance Hub
+                        </Link>
+                    </div>
+
+
 
                 </div>
             </div>

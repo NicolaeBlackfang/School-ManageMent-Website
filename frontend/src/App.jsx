@@ -20,6 +20,8 @@ import AdminSettings from './pages/admin/AdminSettings';
 import StudentDashboard from './pages/student/StudentDashboard';
 import StudentNotices from './pages/student/StudentNotices';
 import StudentGrades from './pages/student/StudentGrades';
+import StudentAttendanceHub from './pages/student/StudentAttendanceHub';
+
 
 
 
@@ -123,6 +125,7 @@ function App() {
             <Route path="/student/dashboard" element={<ProtectedRoute allowedRoles={['student']}><StudentDashboard /></ProtectedRoute>} />
             <Route path="/student/notices" element={<ProtectedRoute allowedRoles={['student']}><StudentNotices /></ProtectedRoute>} />
             <Route path="/student/grades" element={<ProtectedRoute allowedRoles={['student']}><StudentGrades /></ProtectedRoute>} />
+            <Route path="/student/attendance" element={<ProtectedRoute allowedRoles={['student']}><StudentAttendanceHub /></ProtectedRoute>} />
 
           </Routes>
         </main>
