@@ -10,6 +10,7 @@ const noticeRoutes = require('./routes/noticeRoutes');
 const teacherRoutes = require('./routes/teacherRoutes');
 const gradebookRoutes = require('./routes/gradebookRoutes');
 
+
 // 1. Load environment variables first
 dotenv.config({ path: path.join(__dirname, '.env') });
 
@@ -43,7 +44,9 @@ app.use('/api/teacher', teacherRoutes);
 app.use('/api/grades', gradebookRoutes);
 app.use('/api/config', require('./routes/configRoutes'));
 app.use('/api/student', require('./routes/studentRoutes'));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/api/public', require('./routes/publicRoutes'));
+
+
 
 
 

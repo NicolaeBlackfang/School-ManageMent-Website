@@ -7,9 +7,11 @@ const Register = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('student');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Role is now fixed to 'parent' by default
+  const role = 'parent';
 
   const { register } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -22,7 +24,7 @@ const Register = () => {
     const result = await register(name, email, password, role);
 
     if (result.success) {
-      navigate(`/${result.role}/dashboard`);
+      navigate(`/`);
     } else {
       setError(result.message);
     }
@@ -34,7 +36,7 @@ const Register = () => {
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-md border border-gray-100">
         <div>
           <h2 className="mt-2 text-center text-3xl font-extrabold text-gray-900">
-            Create an account
+            Create a Parent Account
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Or{' '}
@@ -85,20 +87,6 @@ const Register = () => {
               className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               placeholder="Min 6 characters"
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Portal Role</label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900"
-            >
-              <option value="student">Student</option>
-              <option value="teacher">Teacher</option>
-              <option value="parent">Parent</option>
-              <option value="admin">Administrator</option>
-            </select>
           </div>
 
           <div className="pt-2">

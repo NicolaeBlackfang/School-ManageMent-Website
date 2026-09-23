@@ -17,11 +17,16 @@ const Login = () => {
     setError('');
     setLoading(true);
 
-    const result = await login(email, password);
+    const result = await login(email, password); // Assuming your login function returns user details/role
 
     if (result.success) {
-      // Redirect dynamically based on user role
-      navigate(`/${result.role}/dashboard`);
+      // Check if the user is a parent, redirect to '/'
+      if (result.role === 'parent') {
+        navigate('/');
+      } else {
+        // Redirect everyone else to their respective dashboards
+        navigate(`/${result.role}/dashboard`);
+      }
     } else {
       setError(result.message);
     }

@@ -15,6 +15,9 @@ const Profile = () => {
     const [message, setMessage] = useState({ text: '', type: '' });
     const [loading, setLoading] = useState(false);
 
+    // Check if the current logged-in user is a parent
+    const isParent = user?.role === 'parent';
+
     // 🟢 Convert file binary to Base64 Text String
     const handleFileChange = (e) => {
         const file = e.target.files[0];
@@ -41,14 +44,20 @@ const Profile = () => {
                 headers: { Authorization: `Bearer ${user.token}` }
             };
 
-            // Send the data directly to your existing update endpoint
-            const { data } = await axios.put('http://localhost:5000/api/auth/profile', {
-                name,
-                email,
-                profileImage: previewUrl // Saves directly into MongoDB Atlas
-            }, config);
+            // Only send name and email if the user is a parent; others only update the profile image
+            const updatePayload = isParent
+                ? { name, email, profileImage: previewUrl }
+                : { profileImage: previewUrl };
 
-            const updatedSession = { ...user, name: data.name, email: data.email, profileImage: data.profileImage };
+            // Send the data directly to your existing update endpoint
+            const { data } = await axios.put('http://localhost:5000/api/auth/profile', updatePayload, config);
+
+            const updatedSession = { 
+                ...user, 
+                name: data.name || user.name, 
+                email: data.email || user.email, 
+                profileImage: data.profileImage 
+            };
             localStorage.setItem('schoolUser', JSON.stringify(updatedSession));
 
             setMessage({ text: '✔ Profile successfully synchronized to Atlas!', type: 'success' });
@@ -67,6 +76,12 @@ const Profile = () => {
         <div className="max-w-4xl mx-auto p-4 sm:p-8 space-y-6">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                 <h1 className="text-2xl font-bold text-gray-900">👤 Account Settings (Atlas Cloud)</h1>
+
+                {!isParent && (
+                    <div className="mt-3 p-3 bg-blue-50 text-blue-700 rounded-xl text-sm">
+                        ℹ️ As a {user?.role}, you can only update your profile picture. Name and email modifications are restricted.
+                    </div>
+                )}
 
                 {message.text && (
                     <div className={`mt-4 p-3 rounded-xl text-sm ${message.type === 'error' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
@@ -95,11 +110,23 @@ const Profile = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Full Identity Name</label>
-                            <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="block w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                            <input 
+                                type="text" 
+                                value={name} 
+                                onChange={(e) => setName(e.target.value)} 
+                                disabled={!isParent}
+                                className={`block w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${isParent ? 'bg-gray-50' : 'bg-gray-100 cursor-not-allowed opacity-75'}`} 
+                            />
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Email Address</label>
-                            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="block w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                            <input 
+                                type="email" 
+                                value={email} 
+                                onChange={(e) => setEmail(e.target.value)} 
+                                disabled={!isParent}
+                                className={`block w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${isParent ? 'bg-gray-50' : 'bg-gray-100 cursor-not-allowed opacity-75'}`} 
+                            />
                         </div>
                     </div>
 

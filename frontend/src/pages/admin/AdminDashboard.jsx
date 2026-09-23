@@ -121,17 +121,14 @@ const AdminDashboard = () => {
                 Configure Roster Settings
               </Link>
             </div>
-
-            {/* Module 3: Finance & Fee Portal (Placeholder) */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between space-y-4 opacity-75 border-dashed border-2">
+            {/* Injected Website Manager Card Module for AdminDashboard.jsx */}
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between space-y-4 hover:border-gray-200 transition-colors">
               <div className="space-y-2">
-                <div className="h-10 w-10 bg-slate-50 text-xl rounded-xl flex items-center justify-center">💳</div>
-                <h3 className="text-lg font-bold text-gray-700">Finance & Fee Portal</h3>
-                <p className="text-sm text-gray-400 leading-relaxed">System terminal placeholder ready to integrate invoice generation mechanics or stripe verification tools.</p>
+                <div className="h-10 w-10 bg-purple-50 text-xl rounded-xl flex items-center justify-center">🌐</div>
+                <h3 className="text-lg font-bold text-gray-900">Manage Website landing</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">Modify welcome text headers, update school logo branding properties, or change showcase hero gallery banners live on Cloudinary.</p>
               </div>
-              <button disabled className="w-full py-2 bg-gray-100 text-gray-400 text-xs font-bold rounded-xl cursor-not-allowed">
-                Module Deactivated
-              </button>
+              <Link to="/admin/website" className="w-full text-center py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors block">Open Layout Manager</Link>
             </div>
 
             {/* Module 4: Global School Configurations Control Panel */}
@@ -149,6 +146,15 @@ const AdminDashboard = () => {
               >
                 Configure School Layout
               </Link>
+            </div>
+            {/* Injected Application Approvals Tracker Card for AdminDashboard.jsx */}
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between space-y-4 hover:border-gray-200 transition-colors">
+              <div className="space-y-2">
+                <div className="h-10 w-10 bg-amber-50 text-xl rounded-xl flex items-center justify-center">👩‍🎓</div>
+                <h3 className="text-lg font-bold text-gray-900">Application Approvals</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">Audit pending online admission forms registers, execute authorization passes, trigger email notifications, and explore the approved archive registries.</p>
+              </div>
+              <Link to="/admin/approvals" className="w-full text-center py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors block">Open Approval Desk</Link>
             </div>
 
           </div>
