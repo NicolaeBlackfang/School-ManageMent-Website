@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { Spinner, EmptyState } from '../../components/ui.jsx';
 
 const SharedNoticeBoard = () => {
   const navigate = useNavigate();
@@ -37,73 +38,78 @@ const SharedNoticeBoard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin h-10 w-10 border-b-2 border-blue-600 rounded-full"></div>
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <Spinner className="h-10 w-10" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4 sm:p-8 space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-8">
 
       {/* Dynamic Back Navigation Pointers depending on current active user role context session */}
       <button
         onClick={() => navigate(userRole === 'teacher' ? '/teacher/dashboard' : '/student/dashboard')}
-        className="text-xs font-bold text-gray-500 bg-white border border-gray-200 px-3 py-1.5 rounded-xl hover:text-gray-900 transition-colors shadow-xs cursor-pointer"
+        className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-500 shadow-xs transition-colors hover:text-slate-900"
       >
         ← Return to Dashboard Terminal
       </button>
 
       <div className="space-y-4">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 tracking-tight">📢 Official School Bulletin Board</h1>
-          <p className="text-xs text-gray-400 mt-0.5">Global announcements, news updates, and role-specific circular briefings.</p>
+          <h1 className="text-2xl font-black tracking-tight text-slate-900">📢 Official School Bulletin Board</h1>
+          <p className="mt-0.5 text-xs text-slate-400">Global announcements, news updates, and role-specific circular briefings.</p>
         </div>
 
-        {error && <div className="p-4 bg-rose-50 text-rose-700 rounded-xl text-sm font-semibold">⚠️ {error}</div>}
+        {error && <div className="rounded-xl bg-rose-50 p-4 text-sm font-semibold text-rose-700">⚠️ {error}</div>}
 
         {notices.length === 0 ? (
-          <div className="bg-white p-12 rounded-2xl border text-center text-gray-400 text-sm shadow-xs">
-            No circular notices have been published for your visibility scope parameters yet.
-          </div>
-        ) : notices.map((notice) => (
-          <div key={notice._id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-3 hover:border-gray-200 transition-all relative overflow-hidden">
+          <EmptyState
+            title="No circulars in your scope"
+            message="No circular notices have been published for your visibility scope parameters yet."
+          />
+        ) : (
+          <div className="space-y-4">
+            {notices.map((notice) => (
+              <div key={notice._id} className="relative space-y-3 overflow-hidden rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm transition-all hover:border-brand-200 hover:shadow-md">
 
-            {/* Visual audience filter badge indicator visible strictly for teachers auditing feeds */}
-            {userRole === 'teacher' && (
-              <span className={`absolute top-0 right-0 text-[8px] font-black uppercase px-2 py-0.5 rounded-bl border-l border-b tracking-wider ${notice.targetAudience === 'teacher' ? 'bg-purple-50 text-purple-700 border-purple-100' :
-                  notice.targetAudience === 'student' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                    'bg-blue-50 text-blue-700 border-blue-100'
-                }`}>
-                Audience: {notice.targetAudience}
-              </span>
-            )}
+                {/* Visual audience filter badge indicator visible strictly for teachers auditing feeds */}
+                {userRole === 'teacher' && (
+                  <span className={`absolute right-0 top-0 border-b border-l px-2 py-0.5 text-[8px] font-black uppercase tracking-wider rounded-bl-lg ${
+                    notice.targetAudience === 'teacher' ? 'border-violet-100 bg-violet-50 text-violet-700' :
+                      notice.targetAudience === 'student' ? 'border-emerald-100 bg-emerald-50 text-emerald-700' :
+                        'border-sky-100 bg-sky-50 text-sky-700'
+                  }`}>
+                    Audience: {notice.targetAudience}
+                  </span>
+                )}
 
-            <div className="flex justify-between items-start gap-4">
-              <div>
-                <h3 className="text-lg font-bold text-gray-900 tracking-tight">{notice.title}</h3>
-                <span className="text-[10px] font-mono text-gray-400 block mt-0.5">Published On: {new Date(notice.createdAt).toLocaleDateString('en-BD', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-lg font-bold tracking-tight text-slate-900">{notice.title}</h3>
+                    <span className="mt-0.5 block font-mono text-[10px] text-slate-400">Published On: {new Date(notice.createdAt).toLocaleDateString('en-BD', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                  </div>
+                </div>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-600">{notice.content}</p>
+
+                {notice.attachmentUrl && (
+                  <div className="pt-2">
+                    {/* Bypasses localhost entirely, routing students and teachers to the absolute cloud bucket target */}
+                    <a
+                      href={notice.attachmentUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-brand-100 bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700 transition-colors hover:bg-brand-100"
+                    >
+                      📄 View Attached Official PDF File
+                    </a>
+                  </div>
+                )}
+
               </div>
-            </div>
-            <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">{notice.content}</p>
-
-            {/* Look inside the notice.attachmentUrl condition block inside noticeboard.jsx and update it to this: */}
-            {notice.attachmentUrl && (
-              <div className="pt-2">
-                {/* 🟢 FIXED: Bypasses localhost entirely, routing students and teachers to the absolute cloud bucket target */}
-                <a
-                  href={notice.attachmentUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-lg text-xs transition-colors border border-blue-100"
-                >
-                  📄 View Attached Official PDF File
-                </a>
-              </div>
-            )}
-
+            ))}
           </div>
-        ))}
+        )}
       </div>
     </div>
   );

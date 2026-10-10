@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import { StatCard, Spinner } from '../../components/ui.jsx';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
@@ -41,120 +42,119 @@ const AdminDashboard = () => {
 
   // Structural cards mapping list for dynamic metrics with color-coded styles
   const metricsGrid = [
-    { label: 'Total Registered Students', count: stats.registeredStudents, color: 'bg-blue-600', text: 'text-gray-900', icon: '👨‍🎓' },
-    { label: 'Active Teachers', count: stats.activeTeachers, color: 'bg-emerald-600', text: 'text-gray-900', icon: '👩‍🏫' },
-    { label: 'Active Notices Published', count: stats.noticesPublished, color: 'bg-amber-600', text: 'text-gray-900', icon: '📢' },
-    { label: 'Pending System Tasks', count: stats.pendingTasks, color: stats.pendingTasks > 0 ? 'bg-rose-600 animate-pulse' : 'bg-gray-400', text: stats.pendingTasks > 0 ? 'text-rose-700' : 'text-gray-900', icon: '⚠️' }
+    { label: 'Total Registered Students', count: stats.registeredStudents, tone: 'indigo', icon: '👨‍🎓' },
+    { label: 'Active Teachers', count: stats.activeTeachers, tone: 'emerald', icon: '👩‍🏫' },
+    { label: 'Active Notices Published', count: stats.noticesPublished, tone: 'amber', icon: '📢' },
+    { label: 'Pending System Tasks', count: stats.pendingTasks, tone: stats.pendingTasks > 0 ? 'rose' : 'slate', icon: '⚠️' }
   ];
 
   if (loading) {
     return (
-      <div className="min-h-[50vh] flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+      <div className="flex min-h-[50vh] items-center justify-center bg-slate-50">
+        <Spinner className="h-10 w-10" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 sm:p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-[calc(100vh-4rem)] bg-slate-50 p-4 sm:p-8">
+      <div className="mx-auto max-w-7xl space-y-8">
 
         {/* 1. Header Hero Panel */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">🎛️ Administrative Terminal</h1>
-            <p className="text-sm text-gray-500 mt-1">Central command hub for monitoring school statistics and managing portal systems synchronized natively across MongoDB Atlas cloud clusters.</p>
+<div className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm sm:flex-row sm:items-center">
+            <div>
+              <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">🎛️ Administrative Terminal</h1>
+              <p className="mt-1 text-sm text-slate-500">Central command hub for monitoring school statistics and managing portal systems synchronized natively across MongoDB Atlas cloud clusters.</p>
+            </div>
+            <div className="flex items-center gap-3 self-start sm:self-center">
+              <Link to="/admin/users/create" className="rounded-xl bg-brand-600 px-4 py-1.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-brand-700">
+                ➕ Create User
+              </Link>
+              <span className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800">
+                Super Admin Account 🔑
+              </span>
+            </div>
           </div>
-          <span className="bg-amber-50 text-amber-800 text-xs px-3 py-1.5 rounded-lg border border-amber-200 font-bold self-start sm:self-center">
-            Super Admin Account 🔑
-          </span>
-        </div>
 
         {error && (
-          <div className="p-3 bg-rose-50 text-rose-700 border border-rose-200 text-xs rounded-xl font-bold">
+          <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-700">
             {error}
           </div>
         )}
 
         {/* 2. Overview Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {metricsGrid.map((stat, idx) => (
-            <div key={idx} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
-              <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{stat.label}</p>
-                <h3 className={`text-3xl font-black mt-1 font-mono ${stat.text}`}>{stat.count}</h3>
-              </div>
-              <div className={`h-12 w-12 rounded-xl text-xl flex items-center justify-center text-white ${stat.color}`}>
-                {stat.icon}
-              </div>
-            </div>
+            <StatCard
+              key={idx}
+              label={stat.label}
+              value={stat.count}
+              icon={<span className="text-lg">{stat.icon}</span>}
+              tone={stat.tone}
+            />
           ))}
         </div>
 
         {/* 3. Core Feature Management Workspace Dashboard */}
         <div>
-          <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Active Management Modules</h2>
+          <h2 className="mb-4 text-sm font-bold uppercase tracking-wider text-slate-400">Active Management Modules</h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
 
-            {/* Module 1: Notice Board Operations */}
-            {/* 🟢 FIXED ACTIVE MODULE: Upgraded Notice Board Card Module with PDF upload description context */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between space-y-4 hover:border-gray-200 transition-colors">
+            <div className="group flex flex-col justify-between space-y-4 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md">
               <div className="space-y-2">
-                <div className="h-10 w-10 bg-amber-50 text-xl rounded-xl flex items-center justify-center">📢</div>
-                <h3 className="text-lg font-bold text-gray-900">Broadcast Bulletins</h3>
-                <p className="text-sm text-gray-500 leading-relaxed">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-xl ring-1 ring-amber-100">📢</div>
+                <h3 className="text-lg font-bold text-slate-900">Broadcast Bulletins</h3>
+                <p className="text-sm leading-relaxed text-slate-500">
                   Broadcast announcements, news alerts, or urgent warnings straight onto parent and student timeline panels instantly with support for official PDF circular attachments.
                 </p>
               </div>
-              <Link to="/admin/notices" className="w-full text-center py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-colors shadow-sm block">Open Notice Board</Link>
+              <Link to="/admin/notices" className="block w-full rounded-xl bg-brand-600 py-2 text-center text-xs font-bold text-white shadow-sm transition-colors group-hover:bg-brand-700">Open Notice Board</Link>
             </div>
 
-            {/* Module 2: User Control Roster Matrix */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between space-y-4 hover:border-gray-200 transition-colors">
+            <div className="group flex flex-col justify-between space-y-4 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md">
               <div className="space-y-2">
-                <div className="h-10 w-10 bg-blue-50 text-xl rounded-xl flex items-center justify-center">👥</div>
-                <h3 className="text-lg font-bold text-gray-900">User Control Matrix</h3>
-                <p className="text-sm text-gray-500 leading-relaxed">Audit faculty profiles, perform roll shifts, delete accounts, or re-route metadata across dynamic collection parameters.</p>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-50 text-xl ring-1 ring-sky-100">👥</div>
+                <h3 className="text-lg font-bold text-slate-900">User Control Matrix</h3>
+                <p className="text-sm leading-relaxed text-slate-500">Audit faculty profiles, perform roll shifts, delete accounts, or re-route metadata across dynamic collection parameters.</p>
               </div>
-              <Link to="/admin/users" className="w-full text-center py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-colors shadow-sm block">
+              <Link to="/admin/users" className="block w-full rounded-xl bg-brand-600 py-2 text-center text-xs font-bold text-white shadow-sm transition-colors group-hover:bg-brand-700">
                 Configure Roster Settings
               </Link>
             </div>
-            {/* Injected Website Manager Card Module for AdminDashboard.jsx */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between space-y-4 hover:border-gray-200 transition-colors">
+
+            <div className="group flex flex-col justify-between space-y-4 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md">
               <div className="space-y-2">
-                <div className="h-10 w-10 bg-purple-50 text-xl rounded-xl flex items-center justify-center">🌐</div>
-                <h3 className="text-lg font-bold text-gray-900">Manage Website landing</h3>
-                <p className="text-sm text-gray-500 leading-relaxed">Modify welcome text headers, update school logo branding properties, or change showcase hero gallery banners live on Cloudinary.</p>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-xl ring-1 ring-violet-100">🌐</div>
+                <h3 className="text-lg font-bold text-slate-900">Manage Website landing</h3>
+                <p className="text-sm leading-relaxed text-slate-500">Modify welcome text headers, update school logo branding properties, or change showcase hero gallery banners live on Cloudinary.</p>
               </div>
-              <Link to="/admin/website" className="w-full text-center py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors block">Open Layout Manager</Link>
+              <Link to="/admin/website" className="block w-full rounded-xl bg-brand-600 py-2 text-center text-xs font-bold text-white shadow-sm transition-colors group-hover:bg-brand-700">Open Layout Manager</Link>
             </div>
 
-            {/* Module 4: Global School Configurations Control Panel */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between space-y-4 hover:border-gray-200 transition-colors">
+            <div className="group flex flex-col justify-between space-y-4 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md">
               <div className="space-y-2">
-                <div className="h-10 w-10 bg-purple-50 text-xl rounded-xl flex items-center justify-center">⚙️</div>
-                <h3 className="text-lg font-bold text-gray-900">Institution Settings</h3>
-                <p className="text-sm text-gray-500 leading-relaxed">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-xl ring-1 ring-violet-100">⚙️</div>
+                <h3 className="text-lg font-bold text-slate-900">Institution Settings</h3>
+                <p className="text-sm leading-relaxed text-slate-500">
                   Dynamically manage active class section names and course subject structures globally across all portal dropdown matrices.
                 </p>
               </div>
               <Link
                 to="/admin/settings"
-                className="w-full text-center py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-colors shadow-sm block"
+                className="block w-full rounded-xl bg-brand-600 py-2 text-center text-xs font-bold text-white shadow-sm transition-colors group-hover:bg-brand-700"
               >
                 Configure School Layout
               </Link>
             </div>
-            {/* Injected Application Approvals Tracker Card for AdminDashboard.jsx */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between space-y-4 hover:border-gray-200 transition-colors">
+
+            <div className="group flex flex-col justify-between space-y-4 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md">
               <div className="space-y-2">
-                <div className="h-10 w-10 bg-amber-50 text-xl rounded-xl flex items-center justify-center">👩‍🎓</div>
-                <h3 className="text-lg font-bold text-gray-900">Application Approvals</h3>
-                <p className="text-sm text-gray-500 leading-relaxed">Audit pending online admission forms registers, execute authorization passes, trigger email notifications, and explore the approved archive registries.</p>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-xl ring-1 ring-amber-100">👩‍🎓</div>
+                <h3 className="text-lg font-bold text-slate-900">Application Approvals</h3>
+                <p className="text-sm leading-relaxed text-slate-500">Audit pending online admission forms registers, execute authorization passes, trigger email notifications, and explore the approved archive registries.</p>
               </div>
-              <Link to="/admin/approvals" className="w-full text-center py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors block">Open Approval Desk</Link>
+              <Link to="/admin/approvals" className="block w-full rounded-xl bg-brand-600 py-2 text-center text-xs font-bold text-white shadow-sm transition-colors group-hover:bg-brand-700">Open Approval Desk</Link>
             </div>
 
           </div>

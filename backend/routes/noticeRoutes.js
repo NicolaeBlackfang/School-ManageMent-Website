@@ -63,7 +63,7 @@ router.post('/', protect, authorizeRoles('admin'), upload.single('pdfFile'), asy
     const notice = await Notice.create(noticePayload);
     res.status(201).json({ success: true, data: notice });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Request failed.' });
   }
 });
 
@@ -80,7 +80,7 @@ router.get('/', protect, async (req, res) => {
     const notices = await Notice.find(filter).sort({ createdAt: -1 }).lean();
     res.json({ success: true, data: notices });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Request failed.' });
   }
 });
 
@@ -98,7 +98,7 @@ router.post('/verify-admin-password', protect, authorizeRoles('admin'), async (r
     }
     res.json({ success: true, message: 'Clearance verified.' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Request failed.' });
   }
 });
 
@@ -133,7 +133,7 @@ router.delete('/:id', protect, authorizeRoles('admin'), async (req, res) => {
     await Notice.deleteOne({ _id: req.params.id });
     res.json({ success: true, message: '🎯 Notice and cloud attachment wiped successfully from system clusters!' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Request failed.' });
   }
 });
 

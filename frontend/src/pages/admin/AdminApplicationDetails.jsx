@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { Spinner, Badge, btnPrimary, btnDanger } from '../../components/ui.jsx';
 
 const AdminApplicationDetails = () => {
   const { id } = useParams();
@@ -44,107 +45,107 @@ const AdminApplicationDetails = () => {
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="animate-spin h-8 w-8 border-b-2 border-blue-600 rounded-full"></div></div>;
-  if (!app) return <div className="p-8 text-center bg-white border rounded-xl max-w-xl mx-auto mt-12 text-slate-400 font-bold">⚠️ Application document not found inside server registries.</div>;
+  if (loading) return <div className="flex min-h-screen items-center justify-center bg-slate-50"><Spinner className="h-8 w-8" /></div>;
+  if (!app) return <div className="mx-auto mt-12 max-w-xl rounded-2xl border border-slate-200/70 bg-white p-8 text-center font-bold text-slate-400">⚠️ Application document not found inside server registries.</div>;
+
+  const statusTone = app.applicationStatus === 'Approved' ? 'emerald'
+    : app.applicationStatus === 'Rejected' ? 'rose' : 'amber';
 
   return (
-    <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-4 text-xs text-slate-700 font-sans">
-      
+    <div className="mx-auto max-w-4xl space-y-4 p-4 font-sans text-xs text-slate-700 sm:p-6">
+
       {/* Header Controls */}
-      <div className="bg-white p-4 rounded-xl border flex justify-between items-center shadow-3xs">
+      <div className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-white p-4 shadow-xs">
         <div>
-          <span className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 font-mono">Voucher REF: #{app._id.slice(-8).toUpperCase()}</span>
-          <h1 className="text-base font-black text-slate-900 mt-1">Applicant Dossier: {app.studentNameEn}</h1>
+          <span className="rounded border border-sky-100 bg-sky-50 px-2 py-0.5 font-mono text-[10px] font-black uppercase text-sky-600">Voucher REF: #{app._id.slice(-8).toUpperCase()}</span>
+          <h1 className="mt-1 text-base font-black text-slate-900">Applicant Dossier: {app.studentNameEn}</h1>
         </div>
-        <button onClick={() => navigate('/admin/approvals')} className="px-3 py-1.5 border bg-slate-50 text-slate-600 font-bold rounded-xl hover:bg-slate-100 cursor-pointer transition-colors">← Approvals Queue</button>
+        <button onClick={() => navigate('/admin/approvals')} className="cursor-pointer rounded-xl border bg-slate-50 px-3 py-1.5 font-bold text-slate-600 transition-colors hover:bg-slate-100">← Approvals Queue</button>
       </div>
 
-      {statusMsg && <div className="p-2.5 bg-blue-50 border border-blue-100 rounded-xl font-bold text-blue-800 animate-fade-in">{statusMsg}</div>}
+      {statusMsg && <div className="animate-fade-in rounded-xl border border-sky-100 bg-sky-50 p-2.5 font-bold text-sky-800">{statusMsg}</div>}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-        
+      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-3">
+
         {/* LEFT COLUMN: ITEMIZED SUMMARY SHEET DETAILS */}
-        <div className="md:col-span-2 bg-white p-5 rounded-xl border shadow-3xs space-y-4">
-          
+        <div className="space-y-4 rounded-2xl border border-slate-200/70 bg-white p-5 shadow-xs md:col-span-2">
+
           {/* Section 1: Student Identity */}
           <div className="space-y-2">
-            <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider border-b pb-1">👤 Student Identity (EN / BN)</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div><span className="text-slate-400 block font-bold">Name (English)</span><span className="text-slate-800 font-bold text-sm">{app.studentNameEn}</span></div>
-              <div><span className="text-slate-400 block font-bold">Name (Bangla)</span><span className="text-slate-800 font-bold font-bn text-sm">{app.studentNameBn || '—'}</span></div>
-              <div><span className="text-slate-400 block font-bold">Date of Birth</span><span className="text-slate-800 font-mono font-bold">{app.dateOfBirth ? app.dateOfBirth.split('T')[0] : '—'}</span></div>
-              <div><span className="text-slate-400 block font-bold">Birth Certificate No</span><span className="text-slate-800 font-mono font-bold">{app.birthCertificateNo || '—'}</span></div>
+            <h3 className="border-b pb-1 text-xs font-black uppercase tracking-wider text-slate-900">👤 Student Identity (EN / BN)</h3>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div><span className="block font-bold text-slate-400">Name (English)</span><span className="text-sm font-bold text-slate-800">{app.studentNameEn}</span></div>
+              <div><span className="block font-bold text-slate-400">Name (Bangla)</span><span className="text-sm font-bold text-slate-800">{app.studentNameBn || '—'}</span></div>
+              <div><span className="block font-bold text-slate-400">Date of Birth</span><span className="font-mono font-bold text-slate-800">{app.dateOfBirth ? app.dateOfBirth.split('T')[0] : '—'}</span></div>
+              <div><span className="block font-bold text-slate-400">Birth Certificate No</span><span className="font-mono font-bold text-slate-800">{app.birthCertificateNo || '—'}</span></div>
             </div>
           </div>
 
           {/* Section 2: Parents Framework */}
           <div className="space-y-2 pt-2">
-            <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider border-b pb-1">👥 Parents & Guardians Registry</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div><span className="text-slate-400 block font-bold">Father's Name (English)</span><span className="text-slate-800 font-bold">{app.fatherNameEn}</span></div>
-              <div><span className="text-slate-400 block font-bold">Father's Name (Bangla)</span><span className="text-slate-800 font-medium font-bn">{app.fatherNameBn || '—'}</span></div>
-              <div><span className="text-slate-400 block font-bold">Father's NID</span><span className="text-slate-800 font-mono">{app.fatherNid || '—'}</span></div>
-              <div><span className="text-slate-400 block font-bold">Mother's Name (English)</span><span className="text-slate-800 font-bold">{app.motherNameEn}</span></div>
-              <div><span className="text-slate-400 block font-bold">Mother's Name (Bangla)</span><span className="text-slate-800 font-medium font-bn">{app.motherNameBn || '—'}</span></div>
-              <div><span className="text-slate-400 block font-bold">Mother's NID</span><span className="text-slate-800 font-mono">{app.motherNid || '—'}</span></div>
-              <div><span className="text-slate-400 block font-bold">Primary Email Contact</span><span className="text-slate-800 font-mono font-bold">{app.emailAddress}</span></div>
+            <h3 className="border-b pb-1 text-xs font-black uppercase tracking-wider text-slate-900">👥 Parents & Guardians Registry</h3>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div><span className="block font-bold text-slate-400">Father's Name (English)</span><span className="font-bold text-slate-800">{app.fatherNameEn}</span></div>
+              <div><span className="block font-bold text-slate-400">Father's Name (Bangla)</span><span className="font-medium text-slate-800">{app.fatherNameBn || '—'}</span></div>
+              <div><span className="block font-bold text-slate-400">Father's NID</span><span className="font-mono text-slate-800">{app.fatherNid || '—'}</span></div>
+              <div><span className="block font-bold text-slate-400">Mother's Name (English)</span><span className="font-bold text-slate-800">{app.motherNameEn}</span></div>
+              <div><span className="block font-bold text-slate-400">Mother's Name (Bangla)</span><span className="font-medium text-slate-800">{app.motherNameBn || '—'}</span></div>
+              <div><span className="block font-bold text-slate-400">Mother's NID</span><span className="font-mono text-slate-800">{app.motherNid || '—'}</span></div>
+              <div><span className="block font-bold text-slate-400">Primary Email Contact</span><span className="font-mono font-bold text-slate-800">{app.emailAddress}</span></div>
             </div>
           </div>
 
           {/* Section 3: Emergency Contacts */}
           <div className="space-y-2 pt-2">
-            <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider border-b pb-1">💬 Emergency SMS Communications</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div><span className="text-slate-400 block font-bold">Guardian Name (EN/BN)</span><span className="text-slate-800 font-bold">{app.guardianNameEn || '—'} ({app.guardianNameBn || '—'})</span></div>
-              <div><span className="text-slate-400 block font-bold">SMS Mobile Phone Number</span><span className="text-blue-600 font-mono font-black text-sm">{app.parentPhone || app.guardianPhone}</span></div>
+            <h3 className="border-b pb-1 text-xs font-black uppercase tracking-wider text-slate-900">💬 Emergency SMS Communications</h3>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div><span className="block font-bold text-slate-400">Guardian Name (EN/BN)</span><span className="font-bold text-slate-800">{app.guardianNameEn || '—'} ({app.guardianNameBn || '—'})</span></div>
+              <div><span className="block font-bold text-slate-400">SMS Mobile Phone Number</span><span className="text-sm font-mono font-black text-brand-600">{app.parentPhone || app.guardianPhone}</span></div>
             </div>
           </div>
         </div>
 
         {/* RIGHT COLUMN: ACTION & BILLING ADMISSION CHECKS */}
         <div className="space-y-4">
-          <div className="bg-white p-4 rounded-xl border shadow-3xs space-y-3">
-            <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider border-b pb-1">💰 MFS Settle Audit</h3>
-            <div className="bg-slate-50 p-3 rounded-xl space-y-2 border font-medium">
+          <div className="space-y-3 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-xs">
+            <h3 className="border-b pb-1 text-xs font-black uppercase tracking-wider text-slate-900">💰 MFS Settle Audit</h3>
+            <div className="space-y-2 rounded-xl border bg-slate-50 p-3 font-medium">
               <div className="flex justify-between">
                 <span className="text-slate-400">Class Intake:</span>
-                <span className="font-bold text-slate-900 font-mono">{app.targetClass}</span>
+                <span className="font-mono font-bold text-slate-900">{app.targetClass}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Payment Gateway:</span>
-                <span className="font-black text-pink-600 uppercase font-mono text-[10px]">{app.paymentMethod || 'bKash'}</span>
+                <span className="font-mono text-[10px] font-black uppercase text-pink-600">{app.paymentMethod || 'bKash'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Paid Fees:</span>
-                <span className="font-black text-slate-900 font-mono">৳{app.paidAmount || '0'} BDT</span>
+                <span className="font-mono font-black text-slate-900">৳{app.paidAmount || '0'} BDT</span>
               </div>
-              <div className="pt-1.5 border-t flex flex-col">
-                <span className="text-slate-400 text-[10px] uppercase font-bold">Transaction Reference ID</span>
-                <span className="text-xs font-mono font-black text-slate-900 mt-0.5 tracking-tight">{app.paymentTxnId || 'MOCK-TX-CODE'}</span>
+              <div className="flex flex-col border-t pt-1.5">
+                <span className="text-[10px] font-bold uppercase text-slate-400">Transaction Reference ID</span>
+                <span className="mt-0.5 font-mono text-xs font-black tracking-tight text-slate-900">{app.paymentTxnId || 'MOCK-TX-CODE'}</span>
               </div>
             </div>
           </div>
 
           {/* Authorization Decision Pad Box */}
-          <div className="bg-white p-4 rounded-xl border shadow-3xs space-y-3 text-center">
-            <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider border-b pb-1 text-left">⚖ Intake Assessment</h3>
+          <div className="space-y-3 rounded-2xl border border-slate-200/70 bg-white p-4 text-center shadow-xs">
+            <h3 className="border-b pb-1 text-left text-xs font-black uppercase tracking-wider text-slate-900">⚖ Intake Assessment</h3>
             <div className="py-2">
-              <span className="text-slate-400 block font-bold">Current Verification Status</span>
-              <span className={`inline-block px-3 py-1 rounded-lg text-[10px] font-black uppercase mt-1 border ${
-                app.applicationStatus === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                app.applicationStatus === 'Rejected' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-amber-50 text-amber-700 border-amber-200 animate-pulse'
-              }`}>
-                {app.applicationStatus || 'Pending Evaluation'}
+              <span className="block font-bold text-slate-400">Current Verification Status</span>
+              <span className="mt-1 inline-block">
+                <Badge tone={statusTone} pulse={statusTone === 'amber'}>{app.applicationStatus || 'Pending Evaluation'}</Badge>
               </span>
             </div>
-            
+
             {app.applicationStatus === 'Pending' || !app.applicationStatus ? (
-              <div className="flex flex-col gap-2 pt-2 border-t">
-                <button onClick={() => handleAction('Approved')} className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-xs cursor-pointer transition-colors">✔ Approve & Dispatch Notifications</button>
-                <button onClick={() => handleAction('Rejected')} className="w-full py-2 bg-rose-50 text-rose-600 border border-rose-100 font-bold rounded-lg hover:bg-rose-100 cursor-pointer transition-colors">❌ Decline Entry Request</button>
+              <div className="flex flex-col gap-2 border-t pt-2">
+                <button onClick={() => handleAction('Approved')} className={`${btnPrimary} w-full cursor-pointer py-2 shadow-xs`}>✔ Approve & Dispatch Notifications</button>
+                <button onClick={() => handleAction('Rejected')} className={`${btnDanger} w-full cursor-pointer py-2 shadow-xs`}>❌ Decline Entry Request</button>
               </div>
             ) : (
-              <p className="text-[11px] text-slate-400 font-medium pt-2 border-t italic">This record configuration loop has already been processed and locked.</p>
+              <p className="border-t pt-2 text-[11px] font-medium italic text-slate-400">This record configuration loop has already been processed and locked.</p>
             )}
           </div>
         </div>

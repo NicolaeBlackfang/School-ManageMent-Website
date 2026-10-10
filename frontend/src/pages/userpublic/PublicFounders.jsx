@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { Spinner, EmptyState } from '../../components/ui.jsx';
 
 const PublicFounders = () => {
   const navigate = useNavigate();
@@ -16,32 +17,35 @@ const PublicFounders = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 sm:p-8 space-y-6">
-      <div className="max-w-7xl mx-auto flex justify-between items-center bg-white border px-6 py-4 rounded-2xl shadow-2xs">
+    <div className="min-h-screen space-y-6 bg-slate-50 p-4 sm:p-8">
+      <div className="mx-auto flex max-w-7xl items-center justify-between rounded-2xl border border-slate-200/70 bg-white px-6 py-4 shadow-sm">
         <div>
-          <h2 className="text-xl font-black text-slate-900 tracking-tight">✨ Institutional Founding Board Messages</h2>
-          <p className="text-xs text-slate-400 mt-0.5">Read official dispatches straight from our leadership pillars [INDEX].</p>
+          <h2 className="text-xl font-black tracking-tight text-slate-900">✨ Institutional Founding Board Messages</h2>
+          <p className="mt-0.5 text-xs text-slate-400">Read official dispatches straight from our leadership pillars [INDEX].</p>
         </div>
-        <button onClick={() => navigate('/')} className="text-xs font-bold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-xl border hover:bg-slate-100 cursor-pointer">← Home</button>
+        <button onClick={() => navigate('/')} className="cursor-pointer rounded-xl border bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-500 transition hover:bg-slate-100">← Home</button>
       </div>
 
-      <main className="max-w-7xl mx-auto w-full">
+      <main className="mx-auto w-full max-w-7xl">
         {loading ? (
-          <div className="py-12 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>
+          <div className="flex justify-center py-12"><Spinner /></div>
         ) : founders.length === 0 ? (
-          <p className="text-sm text-slate-400 bg-white border p-8 rounded-2xl text-center shadow-2xs italic">No board profiles have been updated by the administration yet.</p>
+          <EmptyState
+            title="No board profiles yet"
+            message="No board profiles have been updated by the administration yet."
+          />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
+          <div className="grid animate-fade-in grid-cols-1 gap-6 md:grid-cols-2">
             {founders.map((f) => (
-              <div key={f._id} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row items-center sm:items-start gap-4 hover:border-slate-200 transition-colors">
-                {f.image ? <img src={f.image} alt="Avatar" className="h-24 w-24 rounded-2xl object-cover shadow-xs border bg-slate-50 shrink-0" /> : <div className="h-24 w-24 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center text-3xl font-black shrink-0">👤</div>}
-                <div className="space-y-2 flex-1 text-center sm:text-left">
+              <div key={f._id} className="flex flex-col items-center gap-4 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm transition hover:border-brand-200 hover:shadow-md sm:flex-row sm:items-start">
+                {f.image ? <img src={f.image} alt="Avatar" className="h-24 w-24 shrink-0 rounded-2xl border bg-slate-50 object-cover shadow-xs" /> : <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-3xl font-black text-brand-600">👤</div>}
+                <div className="flex-1 space-y-2 text-center sm:text-left">
                   <div>
-                    <h4 className="text-base font-black text-slate-900 leading-tight">{f.name}</h4>
-                    <span className="text-[11px] font-black uppercase text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md inline-block mt-1">{f.designation}</span>
+                    <h4 className="text-base font-black leading-tight text-slate-900">{f.name}</h4>
+                    <span className="mt-1 inline-block rounded-md border border-brand-100 bg-brand-50 px-2 py-0.5 text-[11px] font-black uppercase text-brand-600">{f.designation}</span>
                   </div>
-                  <div className="relative bg-slate-50 p-3.5 rounded-xl border text-xs italic text-slate-600 leading-relaxed font-medium">
-                    <span className="absolute -top-1.5 left-2 text-xl text-blue-200 font-serif">“</span>
+                  <div className="relative rounded-xl border bg-slate-50 p-3.5 text-xs font-medium italic leading-relaxed text-slate-600">
+                    <span className="absolute -top-1.5 left-2 font-serif text-xl text-brand-200">“</span>
                     "{f.quote}"
                   </div>
                 </div>

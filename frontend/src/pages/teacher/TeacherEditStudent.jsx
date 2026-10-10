@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import defaultAvatar from '../../assets/react.svg';
+import { Spinner, inputClass, labelClass, btnPrimary, btnSecondary } from '../../components/ui.jsx';
 
 const TeacherEditStudent = () => {
   const { id } = useParams();
@@ -34,7 +35,7 @@ const TeacherEditStudent = () => {
 
       try {
         const config = { headers: { Authorization: `Bearer ${storedUser.token}` } };
-        
+
         // 1. 🟢 Fetch dynamic school configurations out of cloud system documents
         const configRes = await axios.get('http://localhost:5000/api/config');
         if (configRes.data.success) {
@@ -75,7 +76,7 @@ const TeacherEditStudent = () => {
       const payload = { name, email, parentContact, gradeClass, rollNumber: Number(rollNumber) };
 
       await axios.put(`http://localhost:5000/api/teacher/users/edit/${id}`, payload, config);
-      
+
       setMessage({ text: '✔ Student record synchronized cleanly on Atlas cloud!', type: 'success' });
       setTimeout(() => navigate('/teacher/roster'), 1500);
     } catch (err) {
@@ -87,54 +88,54 @@ const TeacherEditStudent = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <Spinner className="h-10 w-10" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-4 sm:p-8 space-y-6">
-      <button onClick={() => navigate('/teacher/roster')} className="text-xs font-bold text-gray-500 bg-white border border-gray-200 px-3 py-1.5 rounded-xl hover:text-gray-900 shadow-xs transition-colors cursor-pointer">
+    <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-8">
+      <button onClick={() => navigate('/teacher/roster')} className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-500 shadow-xs transition-colors hover:text-slate-900">
         ← Back to Directory
       </button>
 
-      <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-gray-100">
-        <div className="flex items-center gap-4 border-b border-gray-100 pb-6 mb-6">
-          <img src={profileImage || defaultAvatar} alt="Avatar" className="h-16 w-16 rounded-full object-cover border bg-gray-50" />
+      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm sm:p-8">
+        <div className="mb-6 flex items-center gap-4 border-b border-slate-100 pb-6">
+          <img src={profileImage || defaultAvatar} alt="Avatar" className="h-16 w-16 rounded-full border bg-slate-50 object-cover" />
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">⚙️ Modify Student Parameters</h1>
-            <p className="text-xs text-slate-400">Isolated Management Scope: <span className="font-bold text-blue-600">{gradeClass}</span></p>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">⚙️ Modify Student Parameters</h1>
+            <p className="text-xs text-slate-400">Isolated Management Scope: <span className="font-bold text-brand-600">{gradeClass}</span></p>
           </div>
         </div>
 
         {message.text && (
-          <div className={`p-3 rounded-xl text-sm font-medium mb-6 ${message.type === 'error' ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-800'}`}>
+          <div className={`mb-6 rounded-xl p-3 text-sm font-medium ${message.type === 'error' ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-800'}`}>
             {message.text}
           </div>
         )}
 
         <form onSubmit={handleUpdateSubmit} className="space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Student Name</label>
-              <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className="block w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium" />
+              <label className={labelClass}>Student Name</label>
+              <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Student Gmail Address</label>
-              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="block w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-mono text-xs" />
+              <label className={labelClass}>Student Gmail Address</label>
+              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={`${inputClass} font-mono text-xs`} />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {/* 🟢 DYNAMIC SELECTOR: Roll selection mapping dropdown */}
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Modify Class Roll Position</label>
-              <select 
-                value={rollNumber} 
+              <label className={labelClass}>Modify Class Roll Position</label>
+              <select
+                value={rollNumber}
                 onChange={(e) => setRollNumber(e.target.value)}
                 required
-                className="block w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold"
+                className={`${inputClass} cursor-pointer font-bold`}
               >
                 {Array.from({ length: 60 }, (_, i) => i + 1).map(num => (
                   <option key={num} value={num}>Roll #{num}</option>
@@ -142,19 +143,19 @@ const TeacherEditStudent = () => {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Emergency Parent Phone</label>
-              <input type="text" required value={parentContact} onChange={(e) => setParentContact(e.target.value)} className="block w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium" />
+              <label className={labelClass}>Emergency Parent Phone</label>
+              <input type="text" required value={parentContact} onChange={(e) => setParentContact(e.target.value)} className={inputClass} />
             </div>
           </div>
 
           {/* 🟢 DYNAMIC SELECTOR: Class Selection Dropdown matching configurations */}
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Update Class Assignment</label>
+            <label className={labelClass}>Update Class Assignment</label>
             <select
               value={gradeClass}
               onChange={(e) => setGradeClass(e.target.value)}
               required
-              className="block w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold"
+              className={`${inputClass} cursor-pointer font-bold`}
             >
               {globalClasses.map((className, idx) => (
                 <option key={idx} value={className}>{className}</option>
@@ -162,11 +163,11 @@ const TeacherEditStudent = () => {
             </select>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
-            <button type="button" onClick={() => navigate('/teacher/roster')} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl cursor-pointer">
+          <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+            <button type="button" onClick={() => navigate('/teacher/roster')} className={`${btnSecondary} cursor-pointer text-xs`}>
               Cancel
             </button>
-            <button type="submit" disabled={saving} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-sm transition-colors disabled:bg-blue-400 cursor-pointer">
+            <button type="submit" disabled={saving} className={`${btnPrimary} cursor-pointer`}>
               {saving ? 'Applying Changes...' : 'Save Configuration Changes'}
             </button>
           </div>

@@ -38,7 +38,7 @@ router.put('/profile', protect, async (req, res) => {
       res.status(404).json({ message: 'User context reference dropped.' });
     }
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Request failed.' });
   }
 });
 
@@ -74,7 +74,7 @@ router.get('/dashboard-stats', protect, authorizeRoles('admin'), async (req, res
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Request failed.' });
   }
 });
 
@@ -96,9 +96,12 @@ router.get('/users', protect, authorizeRoles('admin'), async (req, res) => {
     }
 
     if (search) {
+      // ⚠️ SECURITY: escape user input before interpolating into a RegExp to
+      // prevent regex injection / ReDoS. Coerce to string first.
+      const safeSearch = String(search).slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       matchQuery.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
+        { name: { $regex: safeSearch, $options: 'i' } },
+        { email: { $regex: safeSearch, $options: 'i' } }
       ];
     }
 
@@ -177,7 +180,7 @@ router.get('/users', protect, authorizeRoles('admin'), async (req, res) => {
 
     res.json({ success: true, data: users });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Request failed.' });
   }
 });
 
@@ -195,14 +198,36 @@ router.post('/users/create', protect, authorizeRoles('admin', 'teacher'), async 
       return res.status(403).json({ success: false, message: 'Unauthorized: Teachers are only permitted to register student accounts.' });
     }
 
-    // 2. Core security validation checks
-    const userExists = await User.findOne({ email });
+    // 2. Validate the role against the allowed enum (never trust arbitrary input)
+    if (!['admin', 'teacher', 'student', 'parent'].includes(role)) {
+      return res.status(400).json({ success: false, message: 'Invalid role configuration.' });
+    }
+
+    // 3. Basic input validation
+    if (typeof name !== 'string' || !name.trim() || typeof email !== 'string' || !email.trim() || typeof password !== 'string' || password.length < 8) {
+      return res.status(400).json({ success: false, message: 'A name, email and password of at least 8 characters are required.' });
+    }
+
+    // 4. Core security validation checks
+    const normalizedEmail = email.toLowerCase().trim();
+    const userExists = await User.findOne({ email: normalizedEmail });
     if (userExists) {
       return res.status(400).json({ success: false, message: 'An account with this email address already exists.' });
     }
 
-    // 3. Generate the primary authentication document inside the core collection
-    const user = await User.create({ name, email, password, role });
+    // 5. ⚠️ SECURITY: A teacher may only create students inside their OWN class.
+    //    Resolve the class scope BEFORE creating any account so we never leave orphans.
+    let assignedClass = extraField1 || 'Unassigned';
+    if (req.user.role === 'teacher') {
+      const teacherProfile = await Teacher.findOne({ userId: req.user.id }).lean();
+      if (!teacherProfile || teacherProfile.classTeacherOf === 'None') {
+        return res.status(403).json({ success: false, message: 'You are not assigned as a class teacher to any class.' });
+      }
+      assignedClass = teacherProfile.classTeacherOf;
+    }
+
+    // 6. Generate the primary authentication document inside the core collection
+    const user = await User.create({ name: name.trim(), email: normalizedEmail, password, role });
 
     if (role === 'student') {
       // 🟢 FIXED: Safely intercept and force-cast the roll number parameter properties
@@ -211,7 +236,7 @@ router.post('/users/create', protect, authorizeRoles('admin', 'teacher'), async 
       await Student.create({
         userId: user._id,
         studentId: customId || `STU-${Date.now().toString().slice(-4)}`,
-        gradeClass: extraField1 || 'Unassigned',
+        gradeClass: assignedClass,
         parentContact: extraField2 || '',
         guardianName: req.body.guardianName || '',
         rollNumber: absoluteRollNumber // 🟢 EXPLICITLY PASS THE NUMBER HERE
@@ -234,7 +259,7 @@ router.post('/users/create', protect, authorizeRoles('admin', 'teacher'), async 
 
     res.status(201).json({ success: true, message: `Successfully instantiated new ${role} account portal entry!` });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Request failed.' });
   }
 });
 
@@ -305,7 +330,7 @@ router.get('/users/:id', protect, authorizeRoles('admin'), async (req, res) => {
     // Return the individual profile dictionary straight out of the lookup array payload
     res.json({ success: true, data: user[0] });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Request failed.' });
   }
 });
 
@@ -328,7 +353,7 @@ router.patch('/users/:id/role', protect, authorizeRoles('admin'), async (req, re
 
     res.json({ success: true, message: `User role successfully shifted to ${role}.`, data: user });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Request failed.' });
   }
 });
 
@@ -353,7 +378,7 @@ router.delete('/users/teacher/:id', protect, authorizeRoles('admin'), async (req
 
     res.json({ success: true, message: 'Teacher profile cleanly purged from all cloud layers.' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Request failed.' });
   }
 });
 
@@ -401,7 +426,7 @@ router.put('/users/:id/credentials', protect, authorizeRoles('admin'), async (re
 
     res.json({ success: true, message: 'Credentials safely isolated across role-specific collections!' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Request failed.' });
   }
 });
 

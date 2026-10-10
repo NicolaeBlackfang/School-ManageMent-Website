@@ -16,18 +16,21 @@ const protect = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
       // Get user from the token and attach it to the request object (excluding password)
-      req.user = await User.findById(decoded.id);
+      const user = await User.findById(decoded.id).select('-password');
 
-      next();
+      // A valid token for a deleted account must not authenticate
+      if (!user) {
+        return res.status(401).json({ message: 'Not authorized, account no longer exists' });
+      }
+
+      req.user = user;
+      return next();
     } catch (error) {
-      console.error(error);
-      res.status(401).json({ message: 'Not authorized, token failed' });
+      return res.status(401).json({ message: 'Not authorized, token failed' });
     }
   }
 
-  if (!token) {
-    res.status(401).json({ message: 'Not authorized, no token found' });
-  }
+  return res.status(401).json({ message: 'Not authorized, no token found' });
 };
 
 // Middleware to restrict access to specific roles

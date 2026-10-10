@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import { StatCard } from '../../components/ui.jsx';
 
 const StudentDashboard = () => {
     const [records, setRecords] = useState(null);
@@ -30,86 +31,81 @@ const StudentDashboard = () => {
         fetchStudentSummary();
     }, []);
 
-    if (loading) return <div className="min-h-[50vh] flex items-center justify-center"><div className="animate-spin h-10 w-10 border-b-2 border-blue-600 rounded-full"></div></div>;
-    if (error) return <div className="max-w-4xl mx-auto p-4"><div className="p-4 bg-rose-50 text-rose-700 rounded-2xl font-bold">⚠️ {error}</div></div>;
+    if (loading) return <div className="flex min-h-[50vh] items-center justify-center"><div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-brand-500"></div></div>;
+    if (error) return <div className="mx-auto max-w-4xl p-4"><div className="rounded-2xl bg-rose-50 p-4 font-bold text-rose-700">⚠️ {error}</div></div>;
 
     const { profile, attendance } = records;
     const currentUser = JSON.parse(localStorage.getItem('schoolUser'));
 
     return (
-        <div className="max-w-6xl mx-auto p-4 sm:p-8 space-y-8">
+        <div className="mx-auto max-w-6xl space-y-8 p-4 sm:p-8">
 
             {/* Upper Profile Identity Row Board */}
-            <div className="bg-gradient-to-r from-blue-700 to-indigo-800 p-6 sm:p-8 rounded-3xl text-white shadow-md flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex flex-col items-center justify-between gap-4 rounded-3xl bg-gradient-to-r from-brand-600 via-indigo-600 to-indigo-800 p-6 text-white shadow-lg shadow-brand-600/10 sm:flex-row sm:p-8">
                 <div>
-                    <span className="bg-white/20 border border-white/10 px-2.5 py-0.5 rounded-lg text-xs font-black tracking-wider uppercase font-mono">Student Command Port 🎓</span>
-                    <h1 className="text-2xl sm:text-4xl font-black mt-2 tracking-tight">Assalamu Alaikum, {currentUser?.name}!</h1>
-                    <p className="text-xs text-blue-200 mt-1 font-medium font-sans">Classroom Section: <span className="font-bold text-white underline">{profile.gradeClass}</span> | Register Index: <span className="font-bold text-white underline">Roll #{profile.rollNumber}</span></p>
+                    <span className="rounded-lg border border-white/10 bg-white/20 px-2.5 py-0.5 font-mono text-xs font-black uppercase tracking-wider">Student Command Port 🎓</span>
+                    <h1 className="mt-2 text-2xl font-black tracking-tight sm:text-4xl">Assalamu Alaikum, {currentUser?.name}!</h1>
+                    <p className="mt-1 text-xs font-medium text-brand-100">Classroom Section: <span className="font-bold text-white underline">{profile.gradeClass}</span> | Register Index: <span className="font-bold text-white underline">Roll #{profile.rollNumber}</span></p>
                 </div>
             </div>
 
             {/* Analytics Matrix Summary Strip Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
-                    <div><p className="text-[10px] font-black uppercase text-gray-400">Yearly Attendance Rate</p><h3 className="text-3xl font-black text-gray-900 mt-1 font-mono">{attendance.percentage}%</h3></div>
-                    <span className="text-2xl h-11 w-11 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center justify-center">📈</span>
-                </div>
-                <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
-                    <div><p className="text-[10px] font-black uppercase text-gray-400">Parent Registered</p><h3 className="text-md font-bold text-gray-800 mt-2">{profile.guardianName}</h3></div>
-                    <span className="text-2xl h-11 w-11 rounded-xl bg-blue-50 text-blue-700 border border-blue-100 flex items-center justify-center">👪</span>
-                </div>
-                <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
-                    <div><p className="text-[10px] font-black uppercase text-gray-400">Total Classes Logged</p><h3 className="text-3xl font-black text-gray-900 mt-1 font-mono">{attendance.totalSessions}</h3></div>
-                    <span className="text-2xl h-11 w-11 rounded-xl bg-amber-50 text-amber-700 border border-amber-100 flex items-center justify-center">📅</span>
-                </div>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                <StatCard
+                    label="Yearly Attendance Rate"
+                    value={`${attendance.percentage}%`}
+                    icon={<span className="text-lg">📈</span>}
+                    tone="emerald"
+                />
+                <StatCard
+                    label="Parent Registered"
+                    value={profile.guardianName}
+                    icon={<span className="text-lg">👪</span>}
+                    tone="sky"
+                />
+                <StatCard
+                    label="Total Classes Logged"
+                    value={attendance.totalSessions}
+                    icon={<span className="text-lg">📅</span>}
+                    tone="amber"
+                />
             </div>
 
-            {/* 🟢 WORKSPACE PORTS NAV GRID: Clean modular route pointers identical to other panels */}
+            {/* Workspace Ports Nav Grid */}
             <div>
-                <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Core Academic Desks</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <h2 className="mb-4 text-xs font-bold uppercase tracking-wider text-slate-400">Core Academic Desks</h2>
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
 
-                    {/* Port 1: Bulletins Timeline */}
-                    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between space-y-4 hover:border-gray-200 transition-colors">
+                    <div className="group flex flex-col justify-between space-y-4 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md">
                         <div className="space-y-2">
-                            <div className="h-10 w-10 bg-amber-50 text-xl rounded-xl flex items-center justify-center">📢</div>
-                            <h3 className="text-lg font-bold text-gray-900">Official Bulletin Board</h3>
-                            <p className="text-sm text-gray-500 leading-relaxed">Review incoming institutional circular boards, calendar matrices, and download published office circular PDFs.</p>
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-xl ring-1 ring-amber-100">📢</div>
+                            <h3 className="text-lg font-bold text-slate-900">Official Bulletin Board</h3>
+                            <p className="text-sm leading-relaxed text-slate-500">Review incoming institutional circular boards, calendar matrices, and download published office circular PDFs.</p>
                         </div>
-                        <Link to="/student/notices" className="w-full text-center py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors block">Open Bulletin Board</Link>
+                        <Link to="/student/notices" className="block w-full rounded-xl bg-brand-600 py-2.5 text-center text-xs font-bold text-white shadow-sm transition-colors group-hover:bg-brand-700">Open Bulletin Board</Link>
                     </div>
 
-                    {/* Locate the old button inside your StudentDashboard.jsx file and swap it with this link tag parameter */}
-                    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between space-y-4 hover:border-gray-200 transition-colors">
+                    <div className="group flex flex-col justify-between space-y-4 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md">
                         <div className="space-y-2">
-                            <div className="h-10 w-10 bg-purple-50 text-xl rounded-xl flex items-center justify-center">📝</div>
-                            <h3 className="text-lg font-bold text-gray-900">Academic Report Card</h3>
-                            <p className="text-sm text-gray-500 leading-relaxed">Access finalized examination semester indices, review individual letter grade scales, and view teacher feedback marks.</p>
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-xl ring-1 ring-violet-100">📝</div>
+                            <h3 className="text-lg font-bold text-slate-900">Academic Report Card</h3>
+                            <p className="text-sm leading-relaxed text-slate-500">Access finalized examination semester indices, review individual letter grade scales, and view teacher feedback marks.</p>
                         </div>
-                        <Link
-                            to="/student/grades"
-                            className="w-full text-center py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors block"
-                        >
+                        <Link to="/student/grades" className="block w-full rounded-xl bg-brand-600 py-2.5 text-center text-xs font-bold text-white shadow-sm transition-colors group-hover:bg-brand-700">
                             View Report Card
                         </Link>
                     </div>
 
-                    {/* Upgraded Attendance Tracker Card Module for StudentDashboard.jsx */}
-                    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between space-y-4 hover:border-gray-200 transition-colors">
+                    <div className="group flex flex-col justify-between space-y-4 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md">
                         <div className="space-y-2">
-                            <div className="h-10 w-10 bg-emerald-50 text-xl rounded-xl flex items-center justify-center">📈</div>
-                            <h3 className="text-lg font-bold text-gray-900">Attendance Calendar</h3>
-                            <p className="text-sm text-gray-500 leading-relaxed">Access your personalized daily check-in histories, review monthly presence analytics grids, and monitor your system leave records live.</p>
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-xl ring-1 ring-emerald-100">📈</div>
+                            <h3 className="text-lg font-bold text-slate-900">Attendance Calendar</h3>
+                            <p className="text-sm leading-relaxed text-slate-500">Access your personalized daily check-in histories, review monthly presence analytics grids, and monitor your system leave records live.</p>
                         </div>
-                        <Link
-                            to="/student/attendance"
-                            className="w-full text-center py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors block"
-                        >
+                        <Link to="/student/attendance" className="block w-full rounded-xl bg-brand-600 py-2.5 text-center text-xs font-bold text-white shadow-sm transition-colors group-hover:bg-brand-700">
                             Open Attendance Hub
                         </Link>
                     </div>
-
-
 
                 </div>
             </div>

@@ -2,8 +2,17 @@
 const express = require('express');
 const router = express.Router();
 const { protect, authorizeRoles } = require('../middleware/auth');
+const Teacher = require('../models/Teacher');
 const Student = require('../models/Student');
 const Gradebook = require('../models/Gradebook');
+
+// ⚠️ SECURITY HELPER: Admins may access any class; a teacher only their own class.
+const canAccessClass = async (user, classId) => {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  const teacherProfile = await Teacher.findOne({ userId: user.id }).lean();
+  return !!(teacherProfile && teacherProfile.classTeacherOf === classId);
+};
 
 // @desc    Get student roster for any target class along with existing marks for a specific subject
 // @route   GET /api/grades/class/:classId/subject/:subjectName/term/:termName
@@ -12,6 +21,11 @@ router.get('/class/:classId/subject/:subjectName/term/:termName', protect, autho
   const { classId, subjectName, termName } = req.params;
 
   try {
+    // ⚠️ Authorization: prevent cross-class data access
+    if (!(await canAccessClass(req.user, classId))) {
+      return res.status(403).json({ success: false, message: 'Access Denied: class outside your scope.' });
+    }
+
     // 1. Fetch all students belonging to the target class dropdown selection, sorted by roll position
     const students = await Student.find({ gradeClass: classId })
       .populate('userId', 'name email')
@@ -37,7 +51,7 @@ router.get('/class/:classId/subject/:subjectName/term/:termName', protect, autho
 
     res.json({ success: true, data: spreadsheetData });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Request failed.' });
   }
 });
 
@@ -48,6 +62,15 @@ router.post('/bulk-submit', protect, authorizeRoles('teacher', 'admin'), async (
   const { classId, subject, term, scores } = req.body;
 
   try {
+    // ⚠️ Authorization: a teacher may only submit marks for their own class
+    if (!(await canAccessClass(req.user, classId))) {
+      return res.status(403).json({ success: false, message: 'Access Denied: class outside your scope.' });
+    }
+
+    if (!Array.isArray(scores)) {
+      return res.status(400).json({ success: false, message: 'Invalid scores payload.' });
+    }
+
     const bulkOperations = scores.map(item => {
       let grade = 'F';
       const marks = Number(item.marksObtained);
@@ -79,7 +102,7 @@ router.post('/bulk-submit', protect, authorizeRoles('teacher', 'admin'), async (
     await Gradebook.bulkWrite(bulkOperations);
     res.json({ success: true, message: `Successfully synchronized ${subject} marks to Atlas cluster!` });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Request failed.' });
   }
 });
 // @desc    Allow Class Teachers to toggle publication states for their entire class scores matrix
@@ -104,7 +127,7 @@ router.post('/toggle-publish', protect, authorizeRoles('teacher'), async (req, r
 
     res.json({ success: true, message: `Successfully shifted reports to ${publishState ? 'PUBLISHED' : 'DRAFT'} mode!` });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Request failed.' });
   }
 });
 

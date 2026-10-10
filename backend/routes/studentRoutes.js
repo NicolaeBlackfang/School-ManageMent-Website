@@ -78,7 +78,7 @@ router.get('/my-records', protect, authorizeRoles('student'), async (req, res) =
       }))
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Request failed.' });
   }
 });
 
@@ -165,7 +165,7 @@ router.get('/my-attendance-calendar', protect, authorizeRoles('student'), async 
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Request failed.' });
   }
 });
 

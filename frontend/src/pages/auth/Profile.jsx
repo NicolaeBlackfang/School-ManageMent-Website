@@ -1,147 +1,182 @@
-// src/pages/Profile.jsx
+// src/pages/auth/Profile.jsx
 import { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AuthContext } from '../../context/AuthContext';
 import axios from 'axios';
-import defaultAvatar from '../../assets/react.svg'; // Default avatar image for users without a profile picture
+import { AuthContext } from '../../context/AuthContext';
+import defaultAvatar from '../../assets/react.svg';
+import { IconUpload, IconLogOut, IconUser } from '../../components/icons.jsx';
+import { PageContainer, Card, MessageBanner, inputClass, labelClass, btnPrimary, btnDanger } from '../../components/ui.jsx';
 
 const Profile = () => {
-    const { user, logout } = useContext(AuthContext);
-    const navigate = useNavigate();
+  const { user, logout } = useContext(AuthContext);
+  const navigate = useNavigate();
 
-    const [name, setName] = useState(user?.name || '');
-    const [email, setEmail] = useState(user?.email || '');
-    const [previewUrl, setPreviewUrl] = useState(user?.profileImage || '');
-    const [message, setMessage] = useState({ text: '', type: '' });
-    const [loading, setLoading] = useState(false);
+  const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [previewUrl, setPreviewUrl] = useState(user?.profileImage || '');
+  const [message, setMessage] = useState({ text: '', type: '' });
+  const [loading, setLoading] = useState(false);
 
-    // Check if the current logged-in user is a parent
-    const isParent = user?.role === 'parent';
+  const isParent = user?.role === 'parent';
 
-    // 🟢 Convert file binary to Base64 Text String
-    const handleFileChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            if (file.size > 1024 * 1024) { // 1MB Limit to save Atlas storage space
-                setMessage({ text: '❌ Image must be smaller than 1MB.', type: 'error' });
-                return;
-            }
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onloadend = () => {
-                setPreviewUrl(reader.result); // This is the Base64 text string
-            };
-        }
-    };
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 1024 * 1024) { // 1MB Limit to save Atlas storage space
+        setMessage({ text: '❌ Image must be smaller than 1MB.', type: 'error' });
+        return;
+      }
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result); // This is the Base64 text string
+      };
+    }
+  };
 
-    const handleUpdate = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        setMessage({ text: '', type: '' });
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage({ text: '', type: '' });
 
-        try {
-            const config = {
-                headers: { Authorization: `Bearer ${user.token}` }
-            };
+    try {
+      const config = {
+        headers: { Authorization: `Bearer ${user.token}` }
+      };
 
-            // Only send name and email if the user is a parent; others only update the profile image
-            const updatePayload = isParent
-                ? { name, email, profileImage: previewUrl }
-                : { profileImage: previewUrl };
+      // Only send name and email if the user is a parent; others only update the profile image
+      const updatePayload = isParent
+        ? { name, email, profileImage: previewUrl }
+        : { profileImage: previewUrl };
 
-            // Send the data directly to your existing update endpoint
-            const { data } = await axios.put('http://localhost:5000/api/auth/profile', updatePayload, config);
+      // Send the data directly to your existing update endpoint
+      const { data } = await axios.put('http://localhost:5000/api/auth/profile', updatePayload, config);
 
-            const updatedSession = { 
-                ...user, 
-                name: data.name || user.name, 
-                email: data.email || user.email, 
-                profileImage: data.profileImage 
-            };
-            localStorage.setItem('schoolUser', JSON.stringify(updatedSession));
+      const updatedSession = {
+        ...user,
+        name: data.name || user.name,
+        email: data.email || user.email,
+        profileImage: data.profileImage
+      };
+      localStorage.setItem('schoolUser', JSON.stringify(updatedSession));
 
-            setMessage({ text: '✔ Profile successfully synchronized to Atlas!', type: 'success' });
-            setTimeout(() => window.location.reload(), 1500);
-        } catch (error) {
-            setMessage({
-                text: error.response?.data?.message || 'Failed to update profile.',
-                type: 'error'
-            });
-        } finally {
-            setLoading(false);
-        }
-    };
+      setMessage({ text: '✔ Profile successfully synchronized to Atlas!', type: 'success' });
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (error) {
+      setMessage({
+        text: error.response?.data?.message || 'Failed to update profile.',
+        type: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return (
-        <div className="max-w-4xl mx-auto p-4 sm:p-8 space-y-6">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                <h1 className="text-2xl font-bold text-gray-900">👤 Account Settings (Atlas Cloud)</h1>
-
-                {!isParent && (
-                    <div className="mt-3 p-3 bg-blue-50 text-blue-700 rounded-xl text-sm">
-                        ℹ️ As a {user?.role}, you can only update your profile picture. Name and email modifications are restricted.
-                    </div>
-                )}
-
-                {message.text && (
-                    <div className={`mt-4 p-3 rounded-xl text-sm ${message.type === 'error' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
-                        {message.text}
-                    </div>
-                )}
-
-                <form onSubmit={handleUpdate} className="mt-6 space-y-6">
-                    <div className="flex items-center gap-6 border-b border-gray-100 pb-6">
-                        <img
-                            src={previewUrl && previewUrl !== "" ? previewUrl : defaultAvatar}
-                            alt="Avatar Preview"
-                            className="h-20 w-20 rounded-full object-cover border-2 border-blue-500 p-0.5 shadow-sm"
-                        />
-                        <div>
-                            <h3 className="font-semibold text-gray-800 text-sm">Profile Avatar Image</h3>
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onChange={handleFileChange}
-                                className="mt-2 text-xs text-gray-500 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Full Identity Name</label>
-                            <input 
-                                type="text" 
-                                value={name} 
-                                onChange={(e) => setName(e.target.value)} 
-                                disabled={!isParent}
-                                className={`block w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${isParent ? 'bg-gray-50' : 'bg-gray-100 cursor-not-allowed opacity-75'}`} 
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Email Address</label>
-                            <input 
-                                type="email" 
-                                value={email} 
-                                onChange={(e) => setEmail(e.target.value)} 
-                                disabled={!isParent}
-                                className={`block w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${isParent ? 'bg-gray-50' : 'bg-gray-100 cursor-not-allowed opacity-75'}`} 
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex justify-between items-center pt-4 border-t border-gray-100">
-                        <button type="button" onClick={() => { logout(); navigate('/login'); }} className="px-4 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 rounded-xl font-semibold text-sm transition-colors cursor-pointer">
-                            Logout Account
-                        </button>
-                        <button type="submit" disabled={loading} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-sm shadow-sm transition-colors disabled:bg-blue-400 cursor-pointer">
-                            {loading ? 'Saving adjustments...' : 'Update Details'}
-                        </button>
-                    </div>
-                </form>
+  return (
+    <PageContainer className="max-w-4xl">
+      <div className="space-y-6">
+        <div className="animate-fade-up space-y-6">
+          <Card className="overflow-hidden">
+            <div className="flex items-center gap-4 border-b border-slate-100 bg-gradient-to-r from-brand-600 to-sky-500 px-6 py-5 text-white">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15">
+                <IconUser className="h-6 w-6" />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold">Account Settings</h1>
+                <p className="text-sm text-white/80">Manage your profile picture and personal details.</p>
+              </div>
             </div>
+
+            <div className="p-6 sm:p-8">
+              <MessageBanner message={message} />
+
+              {!isParent && (
+                <div className="mb-6 flex items-start gap-2.5 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-700">
+                  <span className="mt-0.5">ℹ️</span>
+                  <span>
+                    As a {user?.role}, you can only update your profile picture. Name and email modifications are restricted.
+                  </span>
+                </div>
+              )}
+
+              <form onSubmit={handleUpdate}>
+                <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-8">
+                  {/* Avatar */}
+                  <div className="flex flex-col items-center gap-3">
+                    <img
+                      src={previewUrl || defaultAvatar}
+                      alt="Profile"
+                      className="h-24 w-24 rounded-2xl border-2 border-brand-200 object-cover shadow-sm"
+                    />
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-brand-300 hover:text-brand-600">
+                      <IconUpload className="h-4 w-4" />
+                      Change Photo
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="sr-only"
+                      />
+                    </label>
+                    {!isParent && (
+                      <p className="max-w-[160px] text-center text-[11px] leading-snug text-slate-400">
+                        You are only allowed to update your profile picture.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Fields */}
+                  <div className="w-full space-y-5">
+                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                      <div>
+                        <label htmlFor="profile-name" className={labelClass}>Full Identity Name</label>
+                        <input
+                          id="profile-name"
+                          type="text"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          disabled={!isParent}
+                          className={inputClass}
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="profile-email" className={labelClass}>Email Address</label>
+                        <input
+                          id="profile-email"
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          disabled={!isParent}
+                          className={inputClass}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col-reverse items-stretch gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                      <button
+                        type="button"
+                        onClick={() => { logout(); navigate('/login'); }}
+                        className={`${btnDanger} sm:w-auto`}
+                      >
+                        <IconLogOut className="h-4 w-4" /> Logout Account
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className={`${btnPrimary} sm:w-auto`}
+                      >
+                        {loading ? 'Saving adjustments...' : 'Update Details'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </Card>
         </div>
-    );
+      </div>
+    </PageContainer>
+  );
 };
 
 export default Profile;

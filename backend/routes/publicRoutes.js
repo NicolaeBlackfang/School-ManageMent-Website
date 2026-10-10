@@ -8,7 +8,22 @@ const { protect, authorizeRoles } = require('../middleware/auth');
 const { SchoolInfo, Application } = require('../models/PublicModels');
 
 const storage = multer.memoryStorage();
-const upload = multer({ storage });
+
+// Only permit common image formats and cap the upload size to prevent abuse/DoS
+const imageFileFilter = (req, file, cb) => {
+  const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+  if (allowed.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Validation failed: only JPEG, PNG, WEBP or GIF images are allowed.'), false);
+  }
+};
+
+const upload = multer({
+  storage,
+  fileFilter: imageFileFilter,
+  limits: { fileSize: 5 * 1024 * 1024, files: 2 } // 5MB per file
+});
 
 const streamUpload = (buffer, folderName) => {
   return new Promise((resolve, reject) => {
@@ -28,7 +43,7 @@ router.get('/info', async (req, res) => {
     if (!info) info = await SchoolInfo.create({});
     res.json({ success: true, data: info });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Request failed.' });
   }
 });
 
@@ -47,7 +62,7 @@ router.post('/info/update', protect, authorizeRoles('admin'), upload.fields([{ n
     await info.save();
     res.json({ success: true, message: 'Website updated live!', data: info });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Request failed.' });
   }
 });
 
@@ -63,7 +78,7 @@ router.post('/founder/add', protect, authorizeRoles('admin'), upload.single('fou
     await info.save();
     res.json({ success: true, message: 'Leader card deployed live!', data: info });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Request failed.' });
   }
 });
 
@@ -77,7 +92,7 @@ router.delete('/founder/:founderId', protect, authorizeRoles('admin'), async (re
     await info.save();
     res.json({ success: true, message: 'Founding member card removed successfully.' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Request failed.' });
   }
 });
 
@@ -85,7 +100,39 @@ router.delete('/founder/:founderId', protect, authorizeRoles('admin'), async (re
 router.post('/apply', async (req, res) => {
   try {
     const config = await SchoolInfo.findOne().lean() || { admissionFeeAmount: 500 };
-    const payload = { ...req.body, paymentStatus: 'Unpaid', paidAmount: 0 };
+
+    // ⚠️ SECURITY: Explicit allow-list instead of spreading req.body.
+    // This prevents mass assignment of server-controlled fields such as
+    // applicationStatus, paidAmount, paymentStatus and paymentTxnId.
+    const payload = {
+      studentNameEn: req.body.studentNameEn,
+      studentNameBn: req.body.studentNameBn,
+      targetClass: req.body.targetClass,
+      dateOfBirth: req.body.dateOfBirth,
+      birthCertificateNo: req.body.birthCertificateNo,
+      emailAddress: req.body.emailAddress,
+      fatherNameEn: req.body.fatherNameEn,
+      fatherNameBn: req.body.fatherNameBn,
+      fatherNid: req.body.fatherNid,
+      motherNameEn: req.body.motherNameEn,
+      motherNameBn: req.body.motherNameBn,
+      motherNid: req.body.motherNid,
+      parentPhone: req.body.parentPhone,
+      guardianNameEn: req.body.guardianNameEn,
+      guardianNameBn: req.body.guardianNameBn,
+      guardianPhone: req.body.guardianPhone,
+      payableAmount: Number(config.admissionFeeAmount) || 500,
+      paidAmount: 0,
+      paymentStatus: 'Unpaid',
+      applicationStatus: 'Pending'
+    };
+
+    const required = ['studentNameEn', 'studentNameBn', 'targetClass', 'dateOfBirth', 'birthCertificateNo', 'emailAddress', 'fatherNameEn', 'fatherNameBn', 'motherNameEn', 'motherNameBn', 'parentPhone'];
+    const missing = required.filter((field) => payload[field] === undefined || payload[field] === null || payload[field] === '');
+    if (missing.length) {
+      return res.status(400).json({ success: false, message: `Missing required fields: ${missing.join(', ')}` });
+    }
+
     const newApp = await Application.create(payload);
     res.status(201).json({
       success: true,
@@ -93,27 +140,40 @@ router.post('/apply', async (req, res) => {
       applicationId: newApp._id,
       payableAmount: config.admissionFeeAmount
     });
-  } catch (error) { res.status(400).json({ success: false, message: error.message }); }
+  } catch (error) { res.status(400).json({ success: false, message: 'Application could not be recorded.' }); }
 });
 
-// 🟢 NEW: Submit direct mock MFS payment verification pass for admission slip
+// ⚠️ SECURITY NOTE: This is a mock MFS confirmation. In production this MUST be
+// replaced by server-to-server verification of the transaction with the payment
+// gateway (bKash/Nagad etc.) rather than trusting client-supplied values.
 // @route   POST /api/public/pay-admission/:appId
 router.post('/pay-admission/:appId', async (req, res) => {
-  const { paymentMethod, txnId, amount } = req.body;
-  if (!txnId || !amount) return res.status(400).json({ success: false, message: 'Transaction details missing.' });
+  const { paymentMethod, txnId } = req.body;
 
   try {
+    // 1. Validate transaction reference format/length
+    if (typeof txnId !== 'string' || txnId.trim().length < 4 || txnId.trim().length > 64) {
+      return res.status(400).json({ success: false, message: 'A valid transaction ID is required.' });
+    }
+
     const app = await Application.findById(req.params.appId);
     if (!app) return res.status(404).json({ success: false, message: 'Application voucher absent.' });
 
+    // 2. Idempotency: never allow an already-paid voucher to be re-marked / re-priced
+    if (app.paymentStatus === 'Paid') {
+      return res.status(409).json({ success: false, message: 'This application has already been paid.' });
+    }
+
+    // 3. ⚠️ Amount is determined by the SERVER, never taken from the request body.
+    //    The client-submitted `amount` is ignored entirely, so it cannot be forged.
     app.paymentStatus = 'Paid';
-    app.paidAmount = Number(amount);
-    app.paymentTxnId = txnId;
-    app.paymentMethod = paymentMethod || 'bKash';
+    app.paidAmount = Number(app.payableAmount) || 500;
+    app.paymentTxnId = txnId.trim();
+    app.paymentMethod = typeof paymentMethod === 'string' ? paymentMethod.slice(0, 32) : 'bKash';
     await app.save();
 
     res.json({ success: true, message: '💸 Fee payment received! Your application status is now under review on Atlas.' });
-  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+  } catch (error) { res.status(500).json({ success: false, message: 'Payment could not be processed.' }); }
 });
 
 // @route   GET /api/public/applications (Admin Only)
@@ -121,7 +181,7 @@ router.get('/applications', protect, authorizeRoles('admin'), async (req, res) =
   try {
     const list = await Application.find({}).sort({ createdAt: -1 }).lean();
     res.json({ success: true, data: list });
-  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+  } catch (error) { res.status(500).json({ success: false, message: 'Request failed.' }); }
 });
 
 // 🟢 UPGRADED EVALUATION ENDPOINT WITH STATUS VERIFICATIONS
@@ -151,7 +211,7 @@ router.patch('/application/:appId', protect, authorizeRoles('admin'), async (req
     }
 
     res.json({ success: true, message: ' Vouchers parameters saved cleanly on Atlas chains.' });
-  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+  } catch (error) { res.status(500).json({ success: false, message: 'Request failed.' }); }
 });
 
 module.exports = router;

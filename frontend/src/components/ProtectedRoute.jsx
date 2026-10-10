@@ -2,6 +2,7 @@
 import { useContext } from 'react';
 import { Navigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import { Spinner } from './ui.jsx';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useContext(AuthContext);
@@ -9,8 +10,11 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   // If the global state is still verifying the user session, show a loading spinner
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex min-h-[70vh] items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-3">
+          <Spinner className="h-10 w-10" />
+          <p className="text-sm font-medium text-slate-400">Loading your workspace...</p>
+        </div>
       </div>
     );
   }

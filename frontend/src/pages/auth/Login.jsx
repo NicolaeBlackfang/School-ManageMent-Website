@@ -1,7 +1,9 @@
-// src/pages/Login.jsx
+// src/pages/auth/Login.jsx
 import { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
+import { IconGraduation, IconShield } from '../../components/icons.jsx';
+import { inputClass, labelClass, btnPrimary } from '../../components/ui.jsx';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -17,14 +19,12 @@ const Login = () => {
     setError('');
     setLoading(true);
 
-    const result = await login(email, password); // Assuming your login function returns user details/role
+    const result = await login(email, password);
 
     if (result.success) {
-      // Check if the user is a parent, redirect to '/'
       if (result.role === 'parent') {
         navigate('/');
       } else {
-        // Redirect everyone else to their respective dashboards
         navigate(`/${result.role}/dashboard`);
       }
     } else {
@@ -34,62 +34,70 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-md border border-gray-100">
-        <div>
-          <h2 className="mt-2 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to your portal
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-slate-50 px-4 py-12 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md">
+        <div className="mb-8 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-600 to-sky-500 text-white shadow-lg shadow-brand-600/20">
+            <IconGraduation className="h-7 w-7" />
+          </div>
+          <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">Welcome back</h1>
+          <p className="mt-1 text-sm text-slate-500">Sign in to access your school portal.</p>
+        </div>
+
+        <div className="animate-fade-up rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm sm:p-8">
+          {error && (
+            <div className="mb-5 flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              <span>⚠️</span> {error}
+            </div>
+          )}
+
+          <form className="space-y-5" onSubmit={handleSubmit}>
+            <div>
+              <label htmlFor="email" className={labelClass}>Email Address</label>
+              <input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={inputClass}
+                placeholder="email@school.com"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className={labelClass}>Password</label>
+              <input
+                id="password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={inputClass}
+                placeholder="••••••••"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className={`${btnPrimary} w-full py-3`}
+            >
+              {loading ? 'Signing in...' : 'Sign In'}
+            </button>
+          </form>
+
+          <p className="mt-6 text-center text-sm text-slate-500">
             Or{' '}
-            <Link to="/register" className="font-medium text-blue-600 hover:text-blue-500">
+            <Link to="/register" className="font-semibold text-brand-600 transition hover:text-brand-700">
               create a new account
             </Link>
           </p>
         </div>
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm text-center">
-            {error}
-          </div>
-        )}
-
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                placeholder="email@school.com"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                placeholder="••••••••"
-              />
-            </div>
-          </div>
-
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-400 transition-colors"
-            >
-              {loading ? 'Signing in...' : 'Sign In'}
-            </button>
-          </div>
-        </form>
+        <p className="mt-6 flex items-center justify-center gap-1.5 text-center text-xs text-slate-400">
+          <IconShield className="h-3.5 w-3.5" /> Secured &amp; encrypted school portal access
+        </p>
       </div>
     </div>
   );

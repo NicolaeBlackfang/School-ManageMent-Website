@@ -12,7 +12,7 @@ router.get('/', async (req, res) => {
     if (!config) config = await SchoolConfig.create({});
     res.json({ success: true, data: config });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Request failed.' });
   }
 });
 
@@ -28,12 +28,12 @@ router.post('/update', protect, authorizeRoles('admin'), async (req, res) => {
     await config.save();
     res.json({ success: true, message: 'Global configurations updated successfully!', data: config });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Request failed.' });
   }
 });
 
 // 🟢 ADDED: Toggle a specific day of the week as an official school off-day repeating column
-router.post('/toggle-offday', protect, async (req, res) => {
+router.post('/toggle-offday', protect, authorizeRoles('admin'), async (req, res) => {
   const { dayIndex } = req.body;
   if (dayIndex === undefined || dayIndex < 0 || dayIndex > 6) {
     return res.status(400).json({ success: false, message: 'Invalid calendar day reference index.' });
@@ -49,12 +49,12 @@ router.post('/toggle-offday', protect, async (req, res) => {
     await config.save();
     res.json({ success: true, weeklyOffDays: config.weeklyOffDays });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Request failed.' });
   }
 });
 
 // 🟢 ADDED: Toggle a specific single unique date string as a holiday vacation block
-router.post('/toggle-holiday', protect, async (req, res) => {
+router.post('/toggle-holiday', protect, authorizeRoles('admin'), async (req, res) => {
   const { dateStr } = req.body;
   if (!dateStr) return res.status(400).json({ success: false, message: 'Date string parameters required.' });
   try {
@@ -68,7 +68,7 @@ router.post('/toggle-holiday', protect, async (req, res) => {
     await config.save();
     res.json({ success: true, holidays: config.holidays });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Request failed.' });
   }
 });
 

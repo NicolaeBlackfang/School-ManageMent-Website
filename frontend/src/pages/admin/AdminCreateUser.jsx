@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { Spinner, inputClass, labelClass, btnPrimary } from '../../components/ui.jsx';
 
 const AdminCreateUser = () => {
   const navigate = useNavigate();
@@ -12,7 +13,7 @@ const AdminCreateUser = () => {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('student'); // Default role parameter allocation
 
-  // Isolated Collections Form States 
+  // Isolated Collections Form States
   const [rollNumber, setRollNumber] = useState('');
   const [extra1, setExtra1] = useState(''); // Grade Class for student / Department for teacher
   const [extra2, setExtra2] = useState(''); // Emergency parent contact / Qualification for teacher
@@ -113,41 +114,41 @@ const AdminCreateUser = () => {
 
   if (fetchingConfig) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <Spinner className="h-10 w-10" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-4 sm:p-8 space-y-6">
+    <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-8">
       <button
         onClick={() => navigate('/admin/users')}
-        className="text-xs font-bold text-gray-500 hover:text-gray-900 bg-white border border-gray-200 px-3 py-1.5 rounded-xl shadow-xs transition-colors cursor-pointer"
+        className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-500 shadow-xs transition-colors hover:text-slate-900"
       >
         ← Back to User Control Matrix
       </button>
 
-      <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-gray-100">
-        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">➕ Instantiate New Account</h1>
-        <p className="text-sm text-gray-500 mt-1">Directly generate centralized credentials and register institutional data records.</p>
+      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm sm:p-8">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">➕ Instantiate New Account</h1>
+        <p className="mt-1 text-sm text-slate-500">Directly generate centralized credentials and register institutional data records.</p>
 
         {isRollConflict && (
-          <div className="mt-4 p-3 bg-rose-50 text-rose-700 border border-rose-200 text-xs rounded-xl font-bold animate-pulse">
+          <div className="mt-4 animate-pulse rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-700">
             ⚠️ Duplication Alert: Roll #{rollNumber} is already assigned to a student inside {extra1}! Please choose a different position.
           </div>
         )}
 
         {message.text && (
-          <div className={`mt-4 p-3 rounded-xl text-sm font-medium ${message.type === 'error' ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-800'}`}>
+          <div className={`mt-4 rounded-xl p-3 text-sm font-medium ${message.type === 'error' ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-800'}`}>
             {message.text}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Select Portal Role Assignment</label>
+              <label className={labelClass}>Select Portal Role Assignment</label>
               <select
                 value={role}
                 onChange={(e) => {
@@ -158,22 +159,24 @@ const AdminCreateUser = () => {
                   setClassTeacherOf('None');
                   setRollNumber('');
                 }}
-                className="block w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={`${inputClass} cursor-pointer`}
               >
                 <option value="student">👨‍🎓 Student Profile</option>
                 <option value="teacher">👩‍🏫 Teacher / Faculty Profile</option>
+                <option value="admin">🛡️ Admin / Super Operator Profile</option>
+                <option value="parent">👪 Parent / Guardian Profile</option>
               </select>
             </div>
 
             {/* Render Dropdown Roll Assignment Menu strictly for Students */}
             {role === 'student' && (
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Assign Class Roll Position</label>
+                <label className={labelClass}>Assign Class Roll Position</label>
                 <select
                   required
                   value={rollNumber}
                   onChange={(e) => setRollNumber(e.target.value)}
-                  className={`w-full border rounded-xl px-4 py-2.5 text-sm bg-white text-gray-900 font-bold focus:outline-none focus:ring-2 ${isRollConflict ? 'border-rose-400 focus:ring-rose-500 text-rose-700 bg-rose-50' : 'border-gray-200 focus:ring-blue-500'}`}
+                  className={`${inputClass} cursor-pointer font-bold ${isRollConflict ? 'border-rose-400 bg-rose-50 text-rose-700 focus:ring-rose-500' : ''}`}
                 >
                   <option value="">-- Choose Roll Position --</option>
                   {Array.from({ length: 60 }, (_, i) => i + 1).map(num => (
@@ -184,71 +187,86 @@ const AdminCreateUser = () => {
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Full Identity Name</label>
-              <input type="text" required value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Johnathan Smith" className="block w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium" />
+              <label className={labelClass}>Full Identity Name</label>
+              <input type="text" required value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Johnathan Smith" className={inputClass} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Official Portal Gmail Address</label>
-              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@gmail.com" className="block w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs" />
+              <label className={labelClass}>Official Portal Gmail Address</label>
+              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@gmail.com" className={`${inputClass} font-mono text-xs`} />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Initial Account Password</label>
-            <input type="password" required minLength="6" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="•••••••• (Min 6 characters)" className="block w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label className={labelClass}>Initial Account Password</label>
+            <input type="password" required minLength="6" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="•••••••• (Min 6 characters)" className={inputClass} />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                {role === 'student' ? 'Assign Grade Class Room' : 'Core Subject Department'}
+              <label className={labelClass}>
+                {role === 'student' ? 'Assign Grade Class Room' : role === 'teacher' ? 'Core Subject Department' : role === 'parent' ? 'Guardian Contact Phone' : 'Access Level'}
               </label>
               {role === 'student' ? (
                 <select
                   value={extra1}
                   onChange={(e) => setExtra1(e.target.value)}
                   required
-                  className="block w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                  className={`${inputClass} cursor-pointer`}
                 >
                   {globalClasses.map((className) => (
                     <option key={className} value={className}>{className}</option>
                   ))}
                 </select>
-              ) : (
+              ) : role === 'teacher' ? (
                 <input
                   type="text" required value={extra1} onChange={(e) => setExtra1(e.target.value)} placeholder="e.g., Mathematics, Physics"
-                  className="block w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                  className={inputClass}
+                />
+              ) : role === 'parent' ? (
+                <input
+                  type="text" required value={extra2} onChange={(e) => setExtra2(e.target.value)} placeholder="e.g., +8801XXXXXXXXX"
+                  className={inputClass}
+                />
+              ) : (
+                <input
+                  type="text" disabled value="Full Administrator Privileges" className={`${inputClass} cursor-not-allowed bg-slate-100 text-slate-400`}
                 />
               )}
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                {role === 'student' ? 'Emergency Parent Phone' : 'Educational Qualifications'}
+              <label className={labelClass}>
+                {role === 'student' ? 'Emergency Parent Phone' : role === 'teacher' ? 'Educational Qualifications' : 'Portal Access Notes'}
               </label>
-              <input
-                type="text" required value={extra2} onChange={(e) => setExtra2(e.target.value)} placeholder={role === 'student' ? "e.g., +8801XXXXXXXXX" : "e.g., M.Sc in Applied Mathematics"}
-                className="block w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
-              />
+              {role === 'student' || role === 'teacher' ? (
+                <input
+                  type="text" required value={extra2} onChange={(e) => setExtra2(e.target.value)} placeholder={role === 'student' ? "e.g., +8801XXXXXXXXX" : "e.g., M.Sc in Applied Mathematics"}
+                  className={inputClass}
+                />
+              ) : (
+                <input
+                  type="text" disabled value={role === 'parent' ? 'Login → school notices, admission updates' : 'Unrestricted access to every management module'} className={`${inputClass} cursor-not-allowed bg-slate-100 text-slate-400`}
+                />
+              )}
             </div>
           </div>
 
           {role === 'student' && (
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Full Guardian / Parent Name</label>
-              <input type="text" required value={guardianName} onChange={(e) => setGuardianName(e.target.value)} placeholder="e.g., Karim Ahmed" className="block w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium" />
+              <label className={labelClass}>Full Guardian / Parent Name</label>
+              <input type="text" required value={guardianName} onChange={(e) => setGuardianName(e.target.value)} placeholder="e.g., Karim Ahmed" className={inputClass} />
             </div>
           )}
 
           {role === 'teacher' && (
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Assign Class Teacher Role</label>
+              <label className={labelClass}>Assign Class Teacher Role</label>
               <select
                 value={classTeacherOf}
                 onChange={(e) => setClassTeacherOf(e.target.value)}
-                className="block w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                className={`${inputClass} cursor-pointer`}
               >
                 <option value="None">❌ No Class Assigned (General Faculty)</option>
                 {globalClasses.map((className) => (
@@ -262,7 +280,7 @@ const AdminCreateUser = () => {
             <button
               type="submit"
               disabled={loading || isRollConflict}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-sm transition-colors disabled:bg-red-300 disabled:cursor-not-allowed cursor-pointer"
+              className={`${btnPrimary} w-full cursor-pointer py-3 disabled:cursor-not-allowed ${isRollConflict ? 'disabled:bg-rose-300' : ''}`}
             >
               {loading ? 'Instantiating Profile...' : isRollConflict ? 'Fix Roll Conflict ⚠️' : 'Create Account Portfolio'}
             </button>

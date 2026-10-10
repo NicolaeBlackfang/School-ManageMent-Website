@@ -48,7 +48,7 @@ import PublicFounders from './pages/userpublic/PublicFounders';
 function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="flex min-h-screen flex-col bg-slate-50">
         {/* Persistent App Header Navigation */}
         <Navbar />
 

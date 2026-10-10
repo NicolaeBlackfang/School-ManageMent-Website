@@ -9,6 +9,15 @@ const User = require('../models/User');
 const Attendance = require('../models/Attendance');
 const SchoolConfig = require('../models/SchoolConfig');
 
+// ⚠️ SECURITY HELPER: Admins may access any class; a teacher may only access the
+// class they are the designated class-teacher of.
+const canAccessClass = async (user, classId) => {
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    const teacherProfile = await Teacher.findOne({ userId: user.id }).lean();
+    return !!(teacherProfile && teacherProfile.classTeacherOf === classId);
+};
+
 // @desc    Get the logged-in teacher's assigned class and student roster
 // @route   GET /api/teacher/my-class
 // @access  Private (Teachers only)
@@ -49,7 +58,7 @@ router.get('/my-class', protect, authorizeRoles('teacher'), async (req, res) => 
             roster: formattedRoster
         });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(500).json({ success: false, message: 'Request failed.' });
     }
 });
 
@@ -80,7 +89,7 @@ router.post('/attendance', protect, authorizeRoles('teacher'), async (req, res) 
 
         res.status(201).json({ success: true, data: attendance });
     } catch (error) {
-        res.status(400).json({ success: false, message: error.message });
+        res.status(400).json({ success: false, message: 'Request failed.' });
     }
 });
 
@@ -91,6 +100,11 @@ router.get('/attendance-calendar-heatmap/:classId', protect, authorizeRoles('tea
     const { year, month } = req.query;
 
     try {
+        // 0. ⚠️ Authorization: verify the caller owns this class (admins bypass)
+        if (!(await canAccessClass(req.user, classId))) {
+            return res.status(403).json({ success: false, message: 'Access Denied: class outside your scope.' });
+        }
+
         // 1. Fetch config document as raw lean object, fallback safely if uninitialized
         const schoolConfig = await SchoolConfig.findOne().lean() || {};
 
@@ -129,7 +143,7 @@ router.get('/attendance-calendar-heatmap/:classId', protect, authorizeRoles('tea
             sessionStart: sessionStartDate
         });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(500).json({ success: false, message: 'Request failed.' });
     }
 });
 
@@ -142,6 +156,11 @@ router.get('/attendance-by-date/:classId', protect, authorizeRoles('teacher', 'a
     const { date } = req.query; // Expects "YYYY-MM-DD" string format
 
     try {
+        // ⚠️ Authorization: verify the caller owns this class (admins bypass)
+        if (!(await canAccessClass(req.user, classId))) {
+            return res.status(403).json({ success: false, message: 'Access Denied: class outside your scope.' });
+        }
+
         const targetDate = new Date(date);
         const startOfDay = new Date(targetDate.setHours(0, 0, 0, 0));
         const endOfDay = new Date(targetDate.setHours(23, 59, 59, 999));
@@ -158,7 +177,7 @@ router.get('/attendance-by-date/:classId', protect, authorizeRoles('teacher', 'a
 
         res.json({ success: true, exists: true, records: existingSheet.records });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(500).json({ success: false, message: 'Request failed.' });
     }
 });
 
@@ -168,6 +187,11 @@ router.get('/attendance-by-date/:classId', protect, authorizeRoles('teacher', 'a
 // @access  Private (Teachers & Admins only)
 router.get('/attendance-analytics/:classId', protect, authorizeRoles('teacher', 'admin'), async (req, res) => {
     try {
+        // ⚠️ Authorization: verify the caller owns this class (admins bypass)
+        if (!(await canAccessClass(req.user, req.params.classId))) {
+            return res.status(403).json({ success: false, message: 'Access Denied: class outside your scope.' });
+        }
+
         const currentYear = new Date().getFullYear();
         const startOfYear = new Date(`${currentYear}-01-01`);
         const endOfYear = new Date(`${currentYear}-12-31`);
@@ -262,7 +286,7 @@ router.get('/attendance-analytics/:classId', protect, authorizeRoles('teacher', 
 
         res.json({ success: true, year: currentYear, data: analytics });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(500).json({ success: false, message: 'Request failed.' });
     }
 });
 
@@ -278,8 +302,13 @@ router.put('/users/edit/:id', protect, authorizeRoles('teacher'), async (req, re
         const teacherProfile = await Teacher.findOne({ userId: req.user.id });
         const currentStudentDoc = await Student.findOne({ userId: req.params.id });
 
-        if (!currentStudentDoc || currentStudentDoc.gradeClass !== teacherProfile.classTeacherOf) {
+        if (!teacherProfile || !currentStudentDoc || currentStudentDoc.gradeClass !== teacherProfile.classTeacherOf) {
             return res.status(403).json({ success: false, message: 'Access Denied: Student outside your class scope.' });
+        }
+
+        // Prevent a class teacher from moving a student into a class they do not own
+        if (gradeClass && gradeClass !== teacherProfile.classTeacherOf) {
+            return res.status(403).json({ success: false, message: 'Access Denied: You cannot reassign students to another class.' });
         }
 
         // Check if the targeted roll number is already taken by someone else in this class
@@ -310,7 +339,7 @@ router.put('/users/edit/:id', protect, authorizeRoles('teacher'), async (req, re
 
         res.json({ success: true, message: 'Student records updated cleanly!' });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(500).json({ success: false, message: 'Request failed.' });
     }
 });
 
@@ -351,7 +380,7 @@ router.delete('/users/delete/:id', protect, authorizeRoles('teacher'), async (re
 
         res.json({ success: true, message: 'Student successfully unlinked and dropped from system registries.' });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(500).json({ success: false, message: 'Request failed.' });
     }
 });
 

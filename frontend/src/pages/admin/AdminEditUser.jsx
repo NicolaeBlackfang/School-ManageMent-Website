@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import defaultAvatar from '../../assets/react.svg';
+import { Spinner, EmptyState, Badge, inputClass, labelClass, btnPrimary, btnSecondary } from '../../components/ui.jsx';
 
 const AdminEditUser = () => {
   const { id } = useParams();
@@ -44,7 +45,7 @@ const AdminEditUser = () => {
 
       try {
         const config = { headers: { Authorization: `Bearer ${storedUser.token}` } };
-        
+
         // 1. FETCH DYNAMIC GLOBAL SCHOOL CONFIGURATIONS
         const configRes = await axios.get('http://localhost:5000/api/config');
         if (configRes.data.success) {
@@ -99,11 +100,11 @@ const AdminEditUser = () => {
 
     try {
       const config = { headers: { Authorization: `Bearer ${storedUser.token}` } };
-      const payload = { 
-        customId, 
-        extraField1: extra1, 
-        extraField2: extra2, 
-        classTeacherOf 
+      const payload = {
+        customId,
+        extraField1: extra1,
+        extraField2: extra2,
+        classTeacherOf
       };
       if (newPassword.trim() !== '') payload.password = newPassword;
 
@@ -112,38 +113,38 @@ const AdminEditUser = () => {
       setTimeout(() => navigate('/admin/users'), 1500);
     } catch (err) {
       setMessage({ text: 'Failed to synchronize updates to Atlas.', type: 'error' });
-    } finally { 
-      setSaving(false); 
+    } finally {
+      setSaving(false);
     }
   };
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="animate-spin h-10 w-10 border-b-2 border-blue-600 rounded-full"></div>
+    <div className="flex min-h-screen items-center justify-center bg-slate-50">
+      <Spinner className="h-10 w-10" />
     </div>
   );
 
   return (
-    <div className="max-w-4xl mx-auto p-4 sm:p-8 space-y-6">
-      <button 
-        onClick={() => navigate('/admin/users')} 
-        className="text-xs font-bold text-gray-500 hover:text-gray-900 bg-white border border-gray-200 px-3 py-1.5 rounded-xl shadow-xs transition-colors cursor-pointer"
+    <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-8">
+      <button
+        onClick={() => navigate('/admin/users')}
+        className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-500 shadow-xs transition-colors hover:text-slate-900"
       >
         ← Back to Matrix
       </button>
 
       {/* Tab Selector Header Bar for Student Hub Viewports */}
       {role === 'student' && (
-        <div className="flex bg-gray-200/60 p-1 rounded-xl max-w-md">
+        <div className="flex max-w-md rounded-xl bg-slate-200/60 p-1">
           {[
-            ['info', '👤 Data Settings'], 
-            ['attendance', '📈 Attendance Sheets'], 
+            ['info', '👤 Data Settings'],
+            ['attendance', '📈 Attendance Sheets'],
             ['grades', '📝 Academic History']
           ].map(([tabKey, label]) => (
-            <button 
-              key={tabKey} 
-              onClick={() => setHubTab(tabKey)} 
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${hubTab === tabKey ? 'bg-white text-blue-600 shadow-xs' : 'text-gray-500 hover:text-gray-900'}`}
+            <button
+              key={tabKey}
+              onClick={() => setHubTab(tabKey)}
+              className={`flex-1 cursor-pointer rounded-lg py-2 text-xs font-bold transition-all ${hubTab === tabKey ? 'bg-white text-brand-600 shadow-xs' : 'text-slate-500 hover:text-slate-900'}`}
             >
               {label}
             </button>
@@ -152,76 +153,76 @@ const AdminEditUser = () => {
       )}
 
       {hubTab === 'info' && (
-        <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-gray-100">
-          <div className="flex items-center gap-4 border-b pb-6 mb-6">
-            <img src={profileImage || defaultAvatar} alt="Avatar" className="h-16 w-16 rounded-full object-cover border" />
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm sm:p-8">
+          <div className="mb-6 flex items-center gap-4 border-b pb-6">
+            <img src={profileImage || defaultAvatar} alt="Avatar" className="h-16 w-16 rounded-full border object-cover" />
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">⚙️ Core Parameters Setup</h1>
-              <p className="text-xs text-gray-400 capitalize">
-                Designation: <span className="font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">{role}</span>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900">⚙️ Core Parameters Setup</h1>
+              <p className="text-xs capitalize text-slate-400">
+                Designation: <Badge tone="brand">{role}</Badge>
               </p>
             </div>
           </div>
 
           {message.text && (
-            <div className={`p-3 rounded-xl text-sm mb-6 ${message.type === 'error' ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-800'}`}>
+            <div className={`mb-6 rounded-xl p-3 text-sm ${message.type === 'error' ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-800'}`}>
               {message.text}
             </div>
           )}
 
           <form onSubmit={handleProfileSave} className="space-y-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Display Username</label>
-                <input type="text" disabled value={name} className="block w-full border rounded-xl px-4 py-2.5 text-sm bg-gray-100 text-gray-400 cursor-not-allowed font-medium" />
+                <label className={labelClass}>Display Username</label>
+                <input type="text" disabled value={name} className={`${inputClass} cursor-not-allowed bg-slate-100 text-slate-400`} />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Email Address</label>
-                <input type="email" disabled value={email} className="block w-full border rounded-xl px-4 py-2.5 text-sm bg-gray-100 text-gray-400 cursor-not-allowed font-mono text-xs" />
+                <label className={labelClass}>Email Address</label>
+                <input type="email" disabled value={email} className={`${inputClass} cursor-not-allowed bg-slate-100 font-mono text-xs text-slate-400`} />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+              <label className={labelClass}>
                 {role === 'student' ? 'Modify Manual Class Roll' : 'Faculty ID Assignment'}
               </label>
               {role === 'student' ? (
-                <select value={customId} onChange={(e) => setCustomId(e.target.value)} className="w-full border rounded-xl px-4 py-2.5 text-sm bg-white text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select value={customId} onChange={(e) => setCustomId(e.target.value)} className={`${inputClass} cursor-pointer font-bold`}>
                   {Array.from({ length: 60 }, (_, i) => i + 1).map(num => <option key={num} value={num}>Roll #{num}</option>)}
                 </select>
               ) : (
-                <input type="text" required value={customId} onChange={(e) => setCustomId(e.target.value)} className="block w-full border rounded-xl px-4 py-2.5 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-mono font-bold" />
+                <input type="text" required value={customId} onChange={(e) => setCustomId(e.target.value)} className={`${inputClass} font-mono font-bold`} />
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                <label className={labelClass}>
                   {role === 'student' ? 'Grade Class Level' : 'Core Department'}
                 </label>
                 {role === 'student' ? (
-                  <select value={extra1} onChange={(e) => setExtra1(e.target.value)} className="w-full border rounded-xl px-4 py-2.5 text-sm bg-white text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <select value={extra1} onChange={(e) => setExtra1(e.target.value)} className={`${inputClass} cursor-pointer`}>
                     {globalClasses.map((className, idx) => (
                       <option key={idx} value={className}>{className}</option>
                     ))}
                   </select>
                 ) : (
-                  <input type="text" value={extra1} onChange={(e) => setExtra1(e.target.value)} className="w-full border rounded-xl px-4 py-2.5 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium" />
+                  <input type="text" value={extra1} onChange={(e) => setExtra1(e.target.value)} className={inputClass} />
                 )}
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                <label className={labelClass}>
                   {role === 'student' ? 'Emergency Parent Phone' : 'Faculty Qualifications'}
                 </label>
-                <input type="text" value={extra2} onChange={(e) => setExtra2(e.target.value)} className="w-full border rounded-xl px-4 py-2.5 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium" />
+                <input type="text" value={extra2} onChange={(e) => setExtra2(e.target.value)} className={inputClass} />
               </div>
             </div>
 
             {role === 'teacher' && (
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Assign Class Teacher Role</label>
-                <select value={classTeacherOf} onChange={(e) => setClassTeacherOf(e.target.value)} className="w-full border rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium">
+                <label className={labelClass}>Assign Class Teacher Role</label>
+                <select value={classTeacherOf} onChange={(e) => setClassTeacherOf(e.target.value)} className={`${inputClass} cursor-pointer`}>
                   <option value="None">❌ No Class Assigned</option>
                   {globalClasses.map((className, idx) => (
                     <option key={idx} value={className}>{className}</option>
@@ -231,15 +232,15 @@ const AdminEditUser = () => {
             )}
 
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Override Portal Password</label>
-              <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Leave completely blank to preserve current" className="block w-full border rounded-xl px-4 py-2.5 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900" />
+              <label className={labelClass}>Override Portal Password</label>
+              <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Leave completely blank to preserve current" className={inputClass} />
             </div>
 
             <div className="flex items-center gap-3 pt-2">
-              <button type="submit" disabled={saving} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-sm transition-colors cursor-pointer disabled:opacity-50">
+              <button type="submit" disabled={saving} className={`${btnPrimary} cursor-pointer disabled:opacity-50`}>
                 {saving ? 'Saving Adjustments...' : 'Save Profile Changes'}
               </button>
-              <button type="button" onClick={() => navigate('/admin/users')} className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl cursor-pointer transition-colors">
+              <button type="button" onClick={() => navigate('/admin/users')} className={`${btnSecondary} cursor-pointer text-xs`}>
                 Cancel
               </button>
             </div>
@@ -249,80 +250,80 @@ const AdminEditUser = () => {
 
       {/* Attendance Stats Sub-Tab Viewport */}
       {hubTab === 'attendance' && (
-        <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-gray-100 space-y-6">
+        <div className="space-y-6 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm sm:p-8">
           <div>
-            <h2 className="text-xl font-bold text-gray-900 tracking-tight">📈 Yearly Attendance Percentage Report</h2>
-            <p className="text-xs text-gray-400 mt-1">Automatic mathematical breakdown compiled directly out of active checking logging layers.</p>
+            <h2 className="text-xl font-bold tracking-tight text-slate-900">📈 Yearly Attendance Percentage Report</h2>
+            <p className="mt-1 text-xs text-slate-400">Automatic mathematical breakdown compiled directly out of active checking logging layers.</p>
           </div>
 
           {attendanceStats ? (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="p-4 bg-gray-50 border border-gray-100 rounded-xl">
-                  <span className="block text-xs font-bold text-gray-400 uppercase">Total Sessions</span>
-                  <span className="text-xl font-bold text-gray-900">{attendanceStats.totalSessions}</span>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <span className="block text-xs font-bold uppercase text-slate-400">Total Sessions</span>
+                  <span className="text-xl font-bold text-slate-900">{attendanceStats.totalSessions}</span>
                 </div>
-                <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
-                  <span className="block text-xs font-bold text-emerald-600 uppercase">Days Present</span>
+                <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
+                  <span className="block text-xs font-bold uppercase text-emerald-600">Days Present</span>
                   <span className="text-xl font-bold text-emerald-800">{attendanceStats.presentCount}</span>
                 </div>
-                <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl">
-                  <span className="block text-xs font-bold text-amber-600 uppercase">Days Late</span>
+                <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
+                  <span className="block text-xs font-bold uppercase text-amber-600">Days Late</span>
                   <span className="text-xl font-bold text-amber-800">{attendanceStats.lateCount}</span>
                 </div>
-                <div className="p-4 bg-rose-50 border border-rose-100 rounded-xl">
-                  <span className="block text-xs font-bold text-rose-600 uppercase">Days Absent</span>
+                <div className="rounded-xl border border-rose-100 bg-rose-50 p-4">
+                  <span className="block text-xs font-bold uppercase text-rose-600">Days Absent</span>
                   <span className="text-xl font-bold text-rose-800">{attendanceStats.absentCount}</span>
                 </div>
               </div>
 
-              <div className="p-6 bg-blue-50 border border-blue-100 rounded-2xl flex items-center justify-between">
+              <div className="flex items-center justify-between rounded-2xl border border-sky-100 bg-sky-50 p-6">
                 <div>
-                  <h3 className="text-sm font-bold text-blue-900">Cumulative Attendance Weight</h3>
-                  <p className="text-xs text-blue-600 mt-0.5">Calculated safety margin status across the entire school year.</p>
+                  <h3 className="text-sm font-bold text-sky-900">Cumulative Attendance Weight</h3>
+                  <p className="mt-0.5 text-xs text-sky-600">Calculated safety margin status across the entire school year.</p>
                 </div>
-                <span className="text-2xl font-black text-blue-700">{attendanceStats.attendancePercentage}%</span>
+                <span className="text-2xl font-black text-sky-700">{attendanceStats.attendancePercentage}%</span>
               </div>
             </div>
           ) : (
-            <div className="p-8 text-center text-sm text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-              No historical attendance log files have been recorded for this student yet.
-            </div>
+            <EmptyState
+              title="No attendance history"
+              message="No historical attendance log files have been recorded for this student yet."
+            />
           )}
         </div>
       )}
 
       {/* Academic Grades Sub-Tab Viewport */}
       {hubTab === 'grades' && (
-        <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-gray-100 space-y-6">
+        <div className="space-y-6 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm sm:p-8">
           <div>
-            <h2 className="text-xl font-bold text-gray-900 tracking-tight">📝 Term Graded Performance Scores</h2>
-            <p className="text-xs text-gray-400 mt-1">Dynamic score compilation reports recorded by active department teachers.</p>
+            <h2 className="text-xl font-bold tracking-tight text-slate-900">📝 Term Graded Performance Scores</h2>
+            <p className="mt-1 text-xs text-slate-400">Dynamic score compilation reports recorded by active department teachers.</p>
           </div>
 
           {academicGrades.length === 0 ? (
-            <div className="p-8 text-center text-sm text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-              No academic grade records found filed for this student portfolio yet.
-            </div>
+            <EmptyState
+              title="No grade records yet"
+              message="No academic grade records found filed for this student portfolio yet."
+            />
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+              <table className="w-full border-collapse text-left">
                 <thead>
-                  <tr className="border-b border-gray-100 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                    <th className="py-3 px-4">Subject Matter</th>
-                    <th className="py-3 px-4">Marks Obtained</th>
-                    <th className="py-3 px-4">Letter Grade</th>
+                  <tr className="border-b border-slate-100 text-xs font-bold uppercase tracking-wider text-slate-400">
+                    <th className="px-4 py-3">Subject Matter</th>
+                    <th className="px-4 py-3">Marks Obtained</th>
+                    <th className="px-4 py-3">Letter Grade</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 text-sm">
+                <tbody className="divide-y divide-slate-100 text-sm">
                   {academicGrades.map((g, index) => (
-                    <tr key={index} className="hover:bg-gray-50">
-                      <td className="py-3.5 px-4 font-medium text-gray-900">🧪 Science / Chemistry</td>
-                      <td className="py-3.5 px-4 text-gray-600 font-mono">{g.marksObtained} / 100</td>
-                      <td className="py-3.5 px-4">
-                        <span className="px-2.5 py-1 bg-blue-50 text-blue-700 font-bold rounded-lg border border-blue-100 text-xs">
-                          {g.letterGrade}
-                        </span>
+                    <tr key={index} className="transition-colors hover:bg-slate-50">
+                      <td className="px-4 py-3.5 font-medium text-slate-900">🧪 Science / Chemistry</td>
+                      <td className="px-4 py-3.5 font-mono text-slate-600">{g.marksObtained} / 100</td>
+                      <td className="px-4 py-3.5">
+                        <Badge tone="indigo">{g.letterGrade}</Badge>
                       </td>
                     </tr>
                   ))}

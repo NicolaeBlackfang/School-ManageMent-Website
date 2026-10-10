@@ -1,0 +1,9 @@
+/* Global app-level visual helpers kept separate from Tailwind utilities. */
+
+/* Headline gradient accent used on hero/page headers */
+.brand-gradient-text {
+  background: linear-gradient(90deg, var(--color-brand-600), #0ea5e9);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}

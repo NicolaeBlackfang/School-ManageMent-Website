@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { Spinner } from '../../components/ui.jsx';
 
 const TeacherAttendance = () => {
   const navigate = useNavigate();
@@ -56,7 +57,7 @@ const TeacherAttendance = () => {
       };
       const { data } = await axios.get(`http://localhost:5000/api/teacher/attendance-calendar-heatmap/${assignedClass}`, config);
       if (data.success) {
-        setHeatmapData({ 
+        setHeatmapData({
           submittedDates: data.submittedDates || [],
           weeklyOffDays: data.weeklyOffDays || [],
           holidays: data.holidays || []
@@ -73,7 +74,7 @@ const TeacherAttendance = () => {
     setLoading(true);
     setMessage({ text: '', type: '' });
     const storedUser = JSON.parse(localStorage.getItem('schoolUser'));
-    
+
     const dateObj = new Date(selectedDateStr);
     const isWeekend = heatmapData.weeklyOffDays.includes(dateObj.getDay());
     const isHoliday = heatmapData.holidays.includes(selectedDateStr);
@@ -85,7 +86,7 @@ const TeacherAttendance = () => {
     }
 
     try {
-      const config = { 
+      const config = {
         headers: { Authorization: `Bearer ${storedUser.token}` },
         params: { date: selectedDateStr }
       };
@@ -93,7 +94,7 @@ const TeacherAttendance = () => {
       const standardRoster = classRes.data.roster || [];
 
       const { data } = await axios.get(`http://localhost:5000/api/teacher/attendance-by-date/${assignedClass}`, config);
-      
+
       if (data.success && data.exists) {
         setRoster(standardRoster.map(student => {
           const matchingRecord = data.records.find(r => r.studentId === student._id);
@@ -173,29 +174,29 @@ const TeacherAttendance = () => {
       const padDay = day < 10 ? `0${day}` : day;
       const padMonth = (month + 1) < 10 ? `0${month + 1}` : month + 1;
       const loopDateStr = `${year}-${padMonth}-${padDay}`;
-      
+
       const dayOfWeek = new Date(year, month, day).getDay();
       const isWeekend = heatmapData.weeklyOffDays.includes(dayOfWeek);
       const isHoliday = heatmapData.holidays.includes(loopDateStr);
       const isSubmitted = heatmapData.submittedDates.includes(loopDateStr);
       const isSelected = selectedDateStr === loopDateStr;
 
-      let cellStyle = "bg-white text-gray-800 border-gray-100 hover:bg-blue-50/50";
-      if (isWeekend) cellStyle = "bg-gray-100 text-gray-400 border-dashed cursor-not-allowed";
-      if (isHoliday) cellStyle = "bg-amber-100 text-amber-800 border-amber-300 font-black";
-      if (isSubmitted && !isWeekend && !isHoliday) cellStyle = "bg-emerald-50 text-emerald-800 border-emerald-200 font-bold";
-      if (isSelected) cellStyle += " ring-2 ring-blue-600 ring-offset-1";
+      let cellStyle = "border-slate-200 bg-white text-slate-800 hover:bg-brand-50/50";
+      if (isWeekend) cellStyle = "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 border-dashed";
+      if (isHoliday) cellStyle = "border-amber-300 bg-amber-100 font-black text-amber-800";
+      if (isSubmitted && !isWeekend && !isHoliday) cellStyle = "border-emerald-200 bg-emerald-50 font-bold text-emerald-800";
+      if (isSelected) cellStyle += " ring-2 ring-brand-600 ring-offset-1";
 
       dayNodes.push(
         <button
           key={day} type="button"
           onClick={() => setSelectedDateStr(loopDateStr)}
-          className={`p-2 sm:p-2.5 text-center text-xs rounded-xl border transition-all font-mono font-bold cursor-pointer ${cellStyle}`}
+          className={`cursor-pointer rounded-xl border p-2 text-center font-mono text-xs font-bold transition-all sm:p-2.5 ${cellStyle}`}
         >
           {day}
-          {isSubmitted && !isWeekend && !isHoliday && <span className="block text-[7px] text-emerald-600 font-sans tracking-tighter">Done ✔</span>}
-          {isWeekend && <span className="block text-[7px] text-gray-400 font-sans font-normal">Off</span>}
-          {isHoliday && <span className="block text-[7px] text-amber-700 font-sans font-normal">Vacation</span>}
+          {isSubmitted && !isWeekend && !isHoliday && <span className="block font-sans text-[7px] tracking-tighter text-emerald-600">Done ✔</span>}
+          {isWeekend && <span className="block font-sans text-[7px] font-normal text-slate-400">Off</span>}
+          {isHoliday && <span className="block font-sans text-[7px] font-normal text-amber-700">Vacation</span>}
         </button>
       );
     }
@@ -208,8 +209,8 @@ const TeacherAttendance = () => {
 
   if (!assignedClass) {
     return (
-      <div className="max-w-4xl mx-auto p-8">
-        <div className="bg-white p-8 rounded-2xl border text-center text-gray-400">
+      <div className="mx-auto max-w-4xl p-8">
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-400">
           ⚠️ Faculty Clearance Required: You do not own an assigned class management scope block.
         </div>
       </div>
@@ -217,23 +218,23 @@ const TeacherAttendance = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-4 sm:p-8 space-y-6">
-      
+    <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-8">
+
       {/* Repeating Weekly Off-Day Control Manager */}
-      <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+      <div className="space-y-3 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
         <div>
-          <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">🛠️ Institution Weekly Off-Days Manager</h3>
-          <p className="text-[11px] text-gray-400 mt-0.5">Toggle generic repeating off-days column rows across your calendar framework layout.</p>
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-900">🛠️ Institution Weekly Off-Days Manager</h3>
+          <p className="mt-0.5 text-[11px] text-slate-400">Toggle generic repeating off-days column rows across your calendar framework layout.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {WEEKDAYS.map(day => {
             const isActive = heatmapData.weeklyOffDays.includes(day.index);
             return (
-              <button 
-                key={day.index} 
-                type="button" 
-                onClick={() => handleToggleWeeklyOffDay(day.index)} 
-                className={`px-3 py-1.5 text-xs font-bold rounded-xl border cursor-pointer ${isActive ? 'bg-slate-900 text-white' : 'bg-gray-50 text-gray-500'}`}
+              <button
+                key={day.index}
+                type="button"
+                onClick={() => handleToggleWeeklyOffDay(day.index)}
+                className={`cursor-pointer rounded-xl border px-3 py-1.5 text-xs font-bold ${isActive ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-500'}`}
               >
                 {day.label} {isActive ? '🔒 [Closed]' : '📖 [Open]'}
               </button>
@@ -242,40 +243,40 @@ const TeacherAttendance = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
+
         {/* Calendar Column Block */}
-        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4 h-fit relative">
+        <div className="relative h-fit space-y-4 rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
           {fetchingHeatmap && (
-            <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center rounded-2xl z-10">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/60 backdrop-blur-[1px]">
+              <Spinner className="h-6 w-6" />
             </div>
           )}
 
-          <div className="flex justify-between items-center border-b pb-3">
-            <h2 className="text-sm font-black text-gray-900 uppercase">📅 Session Calendar</h2>
+          <div className="flex items-center justify-between border-b pb-3">
+            <h2 className="text-sm font-black uppercase text-slate-900">📅 Session Calendar</h2>
             <div className="flex gap-1 text-xs">
-              <button 
-                type="button" 
-                onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)))} 
-                className="p-1 border rounded-lg hover:bg-gray-50 cursor-pointer"
+              <button
+                type="button"
+                onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)))}
+                className="cursor-pointer rounded-lg border p-1 transition hover:bg-slate-50"
               >
                 ◀
               </button>
-              <span className="px-2 py-1 font-bold text-gray-700 min-w-[80px] text-center font-mono">
+              <span className="min-w-[80px] px-2 py-1 text-center font-mono font-bold text-slate-700">
                 {currentDate.toLocaleString('en-BD', { month: 'short', year: 'numeric' })}
               </span>
-              <button 
-                type="button" 
-                onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)))} 
-                className="p-1 border rounded-lg hover:bg-gray-50 cursor-pointer"
+              <button
+                type="button"
+                onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)))}
+                className="cursor-pointer rounded-lg border p-1 transition hover:bg-slate-50"
               >
                 ▶
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-black text-gray-400 uppercase">
+          <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-black uppercase text-slate-400">
             {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => <div key={d} className="py-1">{d}</div>)}
           </div>
 
@@ -283,29 +284,29 @@ const TeacherAttendance = () => {
             {generateCalendarDays()}
           </div>
 
-          <div className="pt-3 border-t border-gray-50 text-[10px] font-bold text-gray-400 flex flex-wrap gap-3">
-            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded bg-emerald-500 border block"></span> Submitted</span>
-            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded bg-amber-400 border block"></span> Single Holiday</span>
-            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded bg-gray-100 border block"></span> Weekly Off</span>
+          <div className="flex flex-wrap gap-3 border-t border-slate-100 pt-3 text-[10px] font-bold text-slate-400">
+            <span className="flex items-center gap-1"><span className="block h-2.5 w-2.5 rounded border bg-emerald-500"></span> Submitted</span>
+            <span className="flex items-center gap-1"><span className="block h-2.5 w-2.5 rounded border bg-amber-400"></span> Single Holiday</span>
+            <span className="flex items-center gap-1"><span className="block h-2.5 w-2.5 rounded border bg-slate-100"></span> Weekly Off</span>
           </div>
         </div>
 
         {/* Ledger Sheet Controls Container */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="space-y-4 lg:col-span-2">
           <div className="flex items-center justify-between gap-2">
-            <button 
-              onClick={() => navigate('/teacher/dashboard')} 
-              className="text-xs font-bold text-gray-500 bg-white border px-3 py-1.5 rounded-xl hover:text-gray-900 transition-colors shadow-2xs cursor-pointer"
+            <button
+              onClick={() => navigate('/teacher/dashboard')}
+              className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-500 shadow-xs transition-colors hover:text-slate-900"
             >
               ← Dashboard
             </button>
-            <button 
-              type="button" 
-              onClick={handleToggleSingleDayHoliday} 
-              className={`px-4 py-1.5 border rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                currentSelectedIsHoliday 
-                  ? 'bg-amber-600 text-white border-amber-700' 
-                  : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+            <button
+              type="button"
+              onClick={handleToggleSingleDayHoliday}
+              className={`cursor-pointer rounded-xl border px-4 py-1.5 text-xs font-bold transition-all ${
+                currentSelectedIsHoliday
+                  ? 'border-amber-700 bg-amber-600 text-white'
+                  : 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100'
               }`}
             >
               {currentSelectedIsHoliday ? '📖 Re-open Selected Date' : '🔒 Toggle Selected Date as Holiday'}
@@ -313,60 +314,60 @@ const TeacherAttendance = () => {
           </div>
 
           {message.text && (
-            <div className={`p-3 rounded-xl text-xs font-bold border ${
-              message.type === 'success' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
-              message.type === 'info' ? 'bg-blue-50 text-blue-800 border-blue-200' : 'bg-rose-50 text-rose-700 border-rose-200'
+            <div className={`rounded-xl border p-3 text-xs font-bold ${
+              message.type === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' :
+              message.type === 'info' ? 'border-sky-200 bg-sky-50 text-sky-800' : 'border-rose-200 bg-rose-50 text-rose-700'
             }`}>
               {message.text}
             </div>
           )}
 
-          <form onSubmit={saveAttendanceSheet} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
-            <div className="flex justify-between items-center border-b pb-4">
+          <form onSubmit={saveAttendanceSheet} className="space-y-6 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+            <div className="flex items-center justify-between border-b pb-4">
               <div>
-                <h2 className="text-lg font-bold text-gray-900 tracking-tight">👥 Roster Entry Ledger ({assignedClass})</h2>
-                <p className="text-xs text-gray-500 mt-0.5 font-mono">Active Target Date: {selectedDateStr}</p>
+                <h2 className="text-lg font-bold tracking-tight text-slate-900">👥 Roster Entry Ledger ({assignedClass})</h2>
+                <p className="mt-0.5 font-mono text-xs text-slate-500">Active Target Date: {selectedDateStr}</p>
               </div>
             </div>
 
             {currentSelectedIsWeekend || currentSelectedIsHoliday ? (
-              <div className="py-12 text-center text-gray-400 space-y-2">
-                <p className="font-bold text-sm text-gray-600">
-                  {currentSelectedIsWeekend 
-                    ? '🔒 This date falls on a recurring Weekly Off-Day.' 
+              <div className="space-y-2 py-12 text-center text-slate-400">
+                <p className="text-sm font-bold text-slate-600">
+                  {currentSelectedIsWeekend
+                    ? '🔒 This date falls on a recurring Weekly Off-Day.'
                     : '⛱️ This specific unique calendar date is marked as an institution holiday vacation break.'}
                 </p>
                 <p className="text-xs">Daily roster data entry processing is deactivated for closed sessions.</p>
               </div>
             ) : loading ? (
-              <div className="py-12 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <div className="flex items-center justify-center py-12">
+                <Spinner className="h-8 w-8" />
               </div>
             ) : (
               <div className="space-y-4">
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-100 text-left text-sm">
-                    <thead className="bg-gray-50 text-xs font-bold uppercase tracking-wider text-gray-500">
+                  <table className="min-w-full divide-y divide-slate-100 text-left text-sm">
+                    <thead className="bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-500">
                       <tr>
                         <th className="px-4 py-3">Roll</th>
                         <th className="px-4 py-3">Student Name</th>
                         <th className="px-4 py-3 text-center">Set Status Flags</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100 bg-white text-gray-700">
+                    <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
                       {roster.length === 0 ? (
                         <tr>
-                          <td colSpan="3" className="text-center py-8 text-gray-400">
+                          <td colSpan="3" className="py-8 text-center text-slate-400">
                             No active student profiles registered under section boundaries yet.
                           </td>
                         </tr>
                       ) : (
                         roster.map(s => (
-                          <tr key={s._id} className="hover:bg-gray-50/50 transition-colors">
-                            <td className="px-4 py-3 font-mono text-xs font-black text-blue-600">
+                          <tr key={s._id} className="transition-colors hover:bg-slate-50/50">
+                            <td className="px-4 py-3 font-mono text-xs font-black text-brand-600">
                               Roll #{s.rollNumber || 'N/A'}
                             </td>
-                            <td className="px-4 py-3 font-semibold text-gray-900">
+                            <td className="px-4 py-3 font-semibold text-slate-900">
                               {s.name}
                             </td>
                             <td className="px-4 py-3">
@@ -376,13 +377,13 @@ const TeacherAttendance = () => {
                                     key={statusOption}
                                     type="button"
                                     onClick={() => handleStatusChange(s._id, statusOption)}
-                                    className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                                    className={`cursor-pointer rounded-lg border px-2.5 py-1 text-xs font-bold transition-all ${
                                       s.status === statusOption
-                                        ? statusOption === 'Present' ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                                          : statusOption === 'Absent' ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
-                                          : statusOption === 'Late' ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
-                                          : 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                        : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                        ? statusOption === 'Present' ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
+                                          : statusOption === 'Absent' ? 'border-rose-600 bg-rose-600 text-white shadow-sm'
+                                          : statusOption === 'Late' ? 'border-amber-500 bg-amber-500 text-white shadow-sm'
+                                          : 'border-brand-600 bg-brand-600 text-white shadow-sm'
+                                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                                     }`}
                                   >
                                     {statusOption}
@@ -398,11 +399,11 @@ const TeacherAttendance = () => {
                 </div>
 
                 {roster.length > 0 && !loading && !currentSelectedIsWeekend && !currentSelectedIsHoliday && (
-                  <div className="flex justify-end pt-4 border-t">
+                  <div className="flex justify-end border-t pt-4">
                     <button
                       type="submit"
                       disabled={saving}
-                      className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md transition-colors cursor-pointer disabled:bg-blue-300"
+                      className="cursor-pointer rounded-xl bg-brand-600 px-6 py-2.5 text-xs font-bold text-white shadow-md transition-colors hover:bg-brand-700 disabled:bg-brand-300"
                     >
                       {saving ? 'Syncing...' : 'Commit Daily Sheet Entries'}
                     </button>

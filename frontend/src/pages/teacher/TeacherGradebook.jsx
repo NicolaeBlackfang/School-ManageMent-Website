@@ -1,6 +1,7 @@
 // src/pages/TeacherGradebook.jsx
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Spinner, inputClass, labelClass, btnPrimary } from '../../components/ui.jsx';
 
 const TeacherGradebook = () => {
   // Global configuration options fetched from Atlas
@@ -147,69 +148,69 @@ const TeacherGradebook = () => {
 
   if (fetchingConfig) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <Spinner className="h-8 w-8" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto p-4 sm:p-8 space-y-6">
-      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-8">
+      <div className="space-y-6 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 tracking-tight">📝 Subject Grading Terminal</h1>
-          <p className="text-xs text-gray-400 mt-0.5">Select class architecture, subject matter, and fill out students marks sheets.</p>
+          <h1 className="text-2xl font-black tracking-tight text-slate-900">📝 Subject Grading Terminal</h1>
+          <p className="mt-0.5 text-xs text-slate-400">Select class architecture, subject matter, and fill out students marks sheets.</p>
         </div>
 
         {/* Class Teacher Control Center Panel */}
         {isClassTeacher && (
-          <div className="flex items-center justify-between bg-purple-50 border border-purple-100 p-4 rounded-xl mt-2 animate-fade-in">
+          <div className="mt-2 flex animate-fade-in flex-col gap-3 rounded-xl border border-violet-200 bg-violet-50 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h4 className="text-xs font-black text-purple-950 uppercase tracking-wider flex items-center gap-1">🔑 Class Teacher Control Center</h4>
-              <p className="text-[11px] text-purple-700 mt-0.5">You own management privileges over this section. Release sheets live globally or pull them back to drafts.</p>
+              <h4 className="flex items-center gap-1 text-xs font-black uppercase tracking-wider text-violet-950">🔑 Class Teacher Control Center</h4>
+              <p className="mt-0.5 text-[11px] text-violet-700">You own management privileges over this section. Release sheets live globally or pull them back to drafts.</p>
             </div>
             <div className="flex gap-2">
-              <button type="button" onClick={() => handleTogglePublish(false)} disabled={publishing} className="px-3 py-1.5 bg-white border text-gray-700 text-xs font-bold rounded-lg cursor-pointer hover:bg-gray-50">📁 Retract to Drafts</button>
-              <button type="button" onClick={() => handleTogglePublish(true)} disabled={publishing} className="px-3 py-1.5 bg-purple-700 text-white text-xs font-bold rounded-lg cursor-pointer hover:bg-purple-800 shadow-xs">🚀 Broadcast Results Live</button>
+              <button type="button" onClick={() => handleTogglePublish(false)} disabled={publishing} className="cursor-pointer rounded-lg border bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50">📁 Retract to Drafts</button>
+              <button type="button" onClick={() => handleTogglePublish(true)} disabled={publishing} className="cursor-pointer rounded-lg bg-violet-700 px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-violet-800">🚀 Broadcast Results Live</button>
             </div>
           </div>
         )}
 
         {/* Dynamic Multi-Dropdown Selection Tool row */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+        <div className="grid grid-cols-1 gap-4 rounded-xl border border-slate-200/70 bg-slate-50 p-4 sm:grid-cols-3">
           <div>
-            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Target Class</label>
-            <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-semibold focus:outline-none">
+            <label className={labelClass}>Target Class</label>
+            <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className={`${inputClass} cursor-pointer text-xs font-semibold`}>
               {globalClasses.map((c, i) => <option key={i} value={c}>{c}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Curricula Subject</label>
-            <select value={selectedSubject} onChange={(e) => setSelectedSubject(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-semibold focus:outline-none">
+            <label className={labelClass}>Curricula Subject</label>
+            <select value={selectedSubject} onChange={(e) => setSelectedSubject(e.target.value)} className={`${inputClass} cursor-pointer text-xs font-semibold`}>
               {globalSubjects.map((s, i) => <option key={i} value={s}>{s}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Exam Term Tier</label>
-            <select value={selectedTerm} onChange={(e) => setSelectedTerm(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-semibold focus:outline-none">
+            <label className={labelClass}>Exam Term Tier</label>
+            <select value={selectedTerm} onChange={(e) => setSelectedTerm(e.target.value)} className={`${inputClass} cursor-pointer text-xs font-semibold`}>
               {globalTerms.map((t, i) => <option key={i} value={t}>{t}</option>)}
             </select>
           </div>
         </div>
 
         {message.text && (
-          <div className={`p-3 rounded-xl text-sm font-medium ${message.type === 'error' ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-800'}`}>
+          <div className={`rounded-xl p-3 text-sm font-medium ${message.type === 'error' ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-800'}`}>
             {message.text}
           </div>
         )}
 
         {loading ? (
-          <div className="py-12 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>
+          <div className="flex justify-center py-12"><Spinner className="h-8 w-8" /></div>
         ) : (
           <form onSubmit={handleBulkSubmit} className="space-y-4">
-            <div className="overflow-x-auto rounded-xl border border-gray-100">
-              <table className="min-w-full divide-y divide-gray-100 text-left text-xs sm:text-sm">
-                <thead className="bg-gray-50 text-xs font-bold uppercase text-gray-500">
+            <div className="overflow-x-auto rounded-xl border border-slate-200/80 shadow-xs">
+              <table className="min-w-full divide-y divide-slate-100 text-left text-xs sm:text-sm">
+                <thead className="bg-slate-50 text-xs font-bold uppercase text-slate-500">
                   <tr>
                     <th className="px-6 py-4">Roll ID</th>
                     <th className="px-6 py-4">Student Identity Details</th>
@@ -217,26 +218,26 @@ const TeacherGradebook = () => {
                     <th className="px-6 py-4 text-right">Computed Grade</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 bg-white">
+                <tbody className="divide-y divide-slate-100 bg-white">
                   {students.length === 0 ? (
-                    <tr><td colSpan="4" className="text-center py-8 text-gray-400">No students are currently registered in {selectedClass}.</td></tr>
+                    <tr><td colSpan="4" className="py-8 text-center text-slate-400">No students are currently registered in {selectedClass}.</td></tr>
                   ) : students.map(s => (
-                    <tr key={s.studentId} className="hover:bg-gray-50/50">
-                      <td className="px-6 py-4 font-mono font-black text-blue-600 text-sm">
+                    <tr key={s.studentId} className="transition-colors hover:bg-slate-50/50">
+                      <td className="px-6 py-4 font-mono text-sm font-black text-brand-600">
                         Roll #{s.studentRollId || 'N/A'}
                       </td>
                       <td className="px-6 py-4">
-                        <span className="font-semibold text-gray-900 block">{s.name}</span>
-                        <span className="text-xs text-gray-400 font-mono block">{s.email}</span>
+                        <span className="block font-semibold text-slate-900">{s.name}</span>
+                        <span className="block font-mono text-xs text-slate-400">{s.email}</span>
                       </td>
                       <td className="px-6 py-4 text-center">
                         <input
                           type="number" min="0" max="100" value={s.marksObtained} onChange={(e) => handleMarkChange(s.studentId, e.target.value)} placeholder="Enter score..."
-                          className="w-24 text-center border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono font-bold bg-gray-50/50"
+                          className="w-24 rounded-lg border border-slate-200 bg-slate-50/50 px-2 py-1.5 text-center font-mono font-bold focus:outline-none focus:ring-2 focus:ring-brand-500"
                         />
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <span className={`px-2 py-1 rounded font-black font-mono border ${s.letterGrade === 'F' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>{s.letterGrade}</span>
+                        <span className={`rounded border px-2 py-1 font-mono font-black ${s.letterGrade === 'F' ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}>{s.letterGrade}</span>
                       </td>
                     </tr>
                   ))}
@@ -245,7 +246,7 @@ const TeacherGradebook = () => {
             </div>
             {students.length > 0 && (
               <div className="flex justify-end pt-2">
-                <button type="submit" className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm transition-colors cursor-pointer">Sync Subject Scores to Atlas</button>
+                <button type="submit" className={`${btnPrimary} cursor-pointer text-xs`}>Sync Subject Scores to Atlas</button>
               </div>
             )}
           </form>
