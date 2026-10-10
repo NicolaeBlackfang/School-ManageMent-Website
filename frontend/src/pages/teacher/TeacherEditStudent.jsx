@@ -28,8 +28,12 @@ const TeacherEditStudent = () => {
         const configRes = await api.get('/config');
         if (configRes.data.success) setGlobalClasses(configRes.data.data.classes || []);
 
-        const { data } = await api.get('/teacher/my-class');
-        const match = data.roster.find((s) => s._id === id);
+        const { data } = await api.get('/teacher/my-scope');
+        let match = null;
+        Object.values(data.data?.studentsByClass || {}).forEach((list) => {
+          const found = list.find((s) => s._id === id);
+          if (found) match = found;
+        });
 
         if (match) {
           setName(match.name);

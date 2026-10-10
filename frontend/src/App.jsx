@@ -47,6 +47,7 @@ import AdminSettings from './pages/admin/AdminSettings';
 import AdminWebsiteManager from './pages/admin/AdminWebsiteManager';
 import AdminAppApproval from './pages/admin/AdminAppApproval';
 import AdminApplicationDetails from './pages/admin/AdminApplicationDetails';
+import AdminAssignments from './pages/admin/AdminAssignments';
 
 // Map legacy /student|teacher|admin/* paths onto the new /s|/t|/a/* structure.
 const legacyRoleRedirects = [
@@ -71,6 +72,7 @@ const legacyRoleRedirects = [
   ['/admin/website', '/a/website'],
   ['/admin/approvals', '/a/approvals'],
   ['/admin/application/:id', '/a/applications/:id'],
+  ['/admin/assignments', '/a/assignments'],
 ];
 
 const shellChildren = [
@@ -103,6 +105,7 @@ const shellChildren = [
   <Route key="aw" path="/a/website" element={<ProtectedRoute allowedRoles={['admin']}><AdminWebsiteManager /></ProtectedRoute>} />,
   <Route key="aa" path="/a/approvals" element={<ProtectedRoute allowedRoles={['admin']}><AdminAppApproval /></ProtectedRoute>} />,
   <Route key="aap" path="/a/applications/:id" element={<ProtectedRoute allowedRoles={['admin']}><AdminApplicationDetails /></ProtectedRoute>} />,
+  <Route key="aas" path="/a/assignments" element={<ProtectedRoute allowedRoles={['admin']}><AdminAssignments /></ProtectedRoute>} />,
 
   // Legacy role-route redirects (feature parity: old bookmarks keep working)
   ...legacyRoleRedirects.map(([from, to]) => (

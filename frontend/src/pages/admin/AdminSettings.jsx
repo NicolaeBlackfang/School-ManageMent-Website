@@ -6,14 +6,15 @@ import {
   PageHeader,
   Card,
   Spinner,
-  MessageBanner,
   inputClass,
   btnPrimary,
   btnDark,
 } from '../../components/ui.jsx';
 import { IconUsers, IconBook, IconCalendar, IconPlus, IconX } from '../../components/icons.jsx';
+import { useToast } from '../../context/ToastContext.jsx';
 
 const AdminSettings = () => {
+  const toast = useToast();
   const [classes, setClasses] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [examTerms, setExamTerms] = useState([]);
@@ -22,7 +23,6 @@ const AdminSettings = () => {
   const [newSubject, setNewSubject] = useState('');
   const [newTerm, setNewTerm] = useState('');
 
-  const [message, setMessage] = useState({ text: '', type: '' });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,7 +36,7 @@ const AdminSettings = () => {
       setSubjects(data.data.subjects || []);
       setExamTerms(data.data.examTerms || []);
     } catch {
-      setMessage({ text: 'Failed to stream global config from the server.', type: 'error' });
+      toast.error('Failed to stream global config from the server.');
     } finally {
       setLoading(false);
     }
@@ -45,10 +45,9 @@ const AdminSettings = () => {
   const handleSaveSettings = async () => {
     try {
       await api.post('/config/update', { classes, subjects, examTerms });
-      setMessage({ text: 'Global settings saved. Dropdowns updated across the system.', type: 'success' });
-      setTimeout(() => setMessage({ text: '', type: '' }), 4000);
+      toast.success('Global settings saved. Dropdowns updated across the system.');
     } catch {
-      setMessage({ text: 'Failed to update global settings.', type: 'error' });
+      toast.error('Failed to update global settings.');
     }
   };
 
@@ -90,8 +89,6 @@ const AdminSettings = () => {
         />
 
         <Card className="p-6 sm:p-8">
-          <MessageBanner message={message} />
-
           <div className="grid grid-cols-1 gap-8 pt-6 md:grid-cols-2">
             <div className="space-y-4">
               <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-slate-700">

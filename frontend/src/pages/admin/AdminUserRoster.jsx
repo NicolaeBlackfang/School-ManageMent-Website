@@ -9,7 +9,6 @@ import {
   Card,
   Badge,
   Spinner,
-  MessageBanner,
   inputClass,
   labelClass,
   btnPrimary,
@@ -25,8 +24,12 @@ import {
   IconEdit,
   IconAlert,
 } from '../../components/icons.jsx';
+import { useToast } from '../../context/ToastContext.jsx';
+import { Pagination } from '../../components/Pagination.jsx';
+import { usePagination } from '../../components/usePagination.js';
 
 const AdminUserRoster = () => {
+    const toast = useToast();
     // Master data matrix (never filtered directly)
     const [allUsers, setAllUsers] = useState([]);
 
@@ -35,7 +38,6 @@ const AdminUserRoster = () => {
     const [classFilter, setClassFilter] = useState('All');
     const [globalClasses, setGlobalClasses] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [message, setMessage] = useState({ text: '', type: '' });
 
     // Password confirmation modal state
     const [isDeleteModalOpen, setIsModalOpen] = useState(false);
@@ -56,7 +58,7 @@ const AdminUserRoster = () => {
                 if (configRes.data.success) setGlobalClasses(configRes.data.data.classes || []);
                 if (usersRes.data.success) setAllUsers(usersRes.data.data);
             } catch {
-                setMessage({ text: 'Failed to synchronize system rosters.', type: 'error' });
+                toast.error('Failed to synchronize system rosters.');
             } finally {
                 setLoading(false);
             }
@@ -81,10 +83,9 @@ const AdminUserRoster = () => {
         try {
             await api.delete(`/auth/users/teacher/${targetDeleteId}`, { data: { password: confirmPassword } });
 
-            setMessage({ text: `Profile for "${targetDeleteName}" successfully erased.`, type: 'success' });
+            toast.success(`Profile for "${targetDeleteName}" successfully erased.`);
             setIsModalOpen(false);
             setAllUsers(allUsers.filter(u => u._id !== targetDeleteId));
-            setTimeout(() => setMessage({ text: '', type: '' }), 4000);
         } catch (err) {
             setModalError(err.response?.data?.message || 'Password authentication mismatch.');
         } finally {
@@ -104,6 +105,8 @@ const AdminUserRoster = () => {
         }
         return matchesTab && matchesSearch;
     });
+
+    const pagination = usePagination(filteredUsers, 10);
 
     if (loading) {
         return (
@@ -165,8 +168,6 @@ const AdminUserRoster = () => {
                     </button>
                 </div>
 
-                <MessageBanner message={message} />
-
                 <Card className="overflow-hidden">
                     <div className="scrollbar-thin overflow-x-auto">
                         <table className="min-w-full divide-y divide-slate-100 text-left text-sm">
@@ -181,7 +182,7 @@ const AdminUserRoster = () => {
                             <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
                                 {filteredUsers.length === 0 ? (
                                     <tr><td colSpan="4" className="py-8 text-center text-slate-400">No records found matching current query parameters.</td></tr>
-                                ) : filteredUsers.map((item) => (
+                                ) : pagination.pageItems.map((item) => (
                                     <tr key={item._id} className="transition-colors hover:bg-slate-50/50">
                                         <td className="px-6 py-4 font-mono text-xs font-bold text-brand-600">
                                             {activeTab === 'student' ? (item.rollNumber ? `Roll #${item.rollNumber}` : 'Roll unassigned') : (item.customId || 'Awaiting ID')}
@@ -227,6 +228,7 @@ const AdminUserRoster = () => {
                             </tbody>
                         </table>
                     </div>
+                    <Pagination {...pagination} itemLabel={activeTab === 'student' ? 'students' : 'teachers'} />
                 </Card>
             </div>
 

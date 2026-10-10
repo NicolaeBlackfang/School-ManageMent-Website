@@ -3,35 +3,33 @@ const express = require('express');
 const router = express.Router();
 const { protect, authorizeRoles } = require('../middleware/auth');
 const { validate, schemas } = require('../middleware/validate');
+const { canAccessClass, getTeacherScope } = require('../middleware/assignments');
 const Teacher = require('../models/Teacher');
 const Student = require('../models/Student');
 const User = require('../models/User');
 const Attendance = require('../models/Attendance');
 const SchoolConfig = require('../models/SchoolConfig');
-
-// ⚠️ SECURITY HELPER: Admins may access any class; a teacher may only access the
-// class they are the designated class-teacher of.
-const canAccessClass = async (user, classId) => {
-    if (!user) return false;
-    if (user.role === 'admin') return true;
-    const teacherProfile = await Teacher.findOne({ userId: user.id }).lean();
-    return !!(teacherProfile && teacherProfile.classTeacherOf === classId);
-};
+const { reindexRollsAfterDelete } = require('../utils/rolls');
 
 // @desc    Get the logged-in teacher's assigned class and student roster
 // @route   GET /api/teacher/my-class
 // @access  Private (Teachers only)
 router.get('/my-class', protect, authorizeRoles('teacher'), async (req, res) => {
     try {
-        const teacherProfile = await Teacher.findOne({ userId: req.user.id });
-        if (!teacherProfile || teacherProfile.classTeacherOf === 'None') {
+        const scope = await getTeacherScope(req.user.id);
+        const targetClass = req.query.classId || scope.classTeacherOf || scope.classTeacherClasses[0];
+
+        if (!targetClass) {
             return res.status(400).json({ success: false, message: 'You are not assigned as a Class Teacher to any active class.' });
         }
+        if (!scope.classTeacherClasses.includes(targetClass)) {
+            return res.status(403).json({ success: false, message: 'Access Denied: class outside your scope.' });
+        }
 
-        const assignedClass = teacherProfile.classTeacherOf;
+        const teacherProfile = await Teacher.findOne({ userId: req.user.id }).lean();
 
         // 2. Fetch all students whose gradeClass matches, sorted chronologically by roll numbers
-        const studentsInClass = await Student.find({ gradeClass: assignedClass })
+        const studentsInClass = await Student.find({ gradeClass: targetClass })
             .populate('userId', 'name email profileImage')
             .sort({ rollNumber: 1 }) // 🟢 Sorts list from Roll 1 onwards immediately
             .lean();
@@ -52,9 +50,10 @@ router.get('/my-class', protect, authorizeRoles('teacher'), async (req, res) => 
 
         res.json({
             success: true,
-            classTeacherOf: assignedClass,
-            department: teacherProfile.department,
-            qualification: teacherProfile.qualification,
+            classTeacherOf: targetClass,
+            classTeacherClasses: scope.classTeacherClasses,
+            department: teacherProfile?.department,
+            qualification: teacherProfile?.qualification,
             roster: formattedRoster
         });
     } catch (error) {
@@ -66,20 +65,24 @@ router.get('/my-class', protect, authorizeRoles('teacher'), async (req, res) => 
 // @route   POST /api/teacher/attendance
 // @access  Private (Teachers only)
 router.post('/attendance', protect, authorizeRoles('teacher'), validate(schemas.teacherSubmitAttendance), async (req, res) => {
-    const { date, records } = req.body;
+    const { date, records, classId } = req.body;
 
     try {
-        const teacherProfile = await Teacher.findOne({ userId: req.user.id });
-        if (!teacherProfile || teacherProfile.classTeacherOf === 'None') {
+        const scope = await getTeacherScope(req.user.id);
+        const targetClass = classId || scope.classTeacherOf || scope.classTeacherClasses[0];
+        if (!targetClass) {
             return res.status(403).json({ success: false, message: 'Unauthorized profile clearance.' });
+        }
+        if (!(await canAccessClass(req.user, targetClass))) {
+            return res.status(403).json({ success: false, message: 'Access Denied: class outside your scope.' });
         }
 
         const cleanDate = new Date(date).setHours(0, 0, 0, 0);
 
         const attendance = await Attendance.findOneAndUpdate(
-            { classId: teacherProfile.classTeacherOf, date: cleanDate },
+            { classId: targetClass, date: cleanDate },
             {
-                classId: teacherProfile.classTeacherOf,
+                classId: targetClass,
                 date: cleanDate,
                 records,
                 submittedBy: req.user.id
@@ -299,15 +302,15 @@ router.put('/users/edit/:id', protect, authorizeRoles('teacher'), validate(schem
     const { gradeClass, parentContact, name, email, rollNumber } = req.body;
 
     try {
-        const teacherProfile = await Teacher.findOne({ userId: req.user.id });
         const currentStudentDoc = await Student.findOne({ userId: req.params.id });
 
-        if (!teacherProfile || !currentStudentDoc || currentStudentDoc.gradeClass !== teacherProfile.classTeacherOf) {
+        if (!currentStudentDoc || !(await canAccessClass(req.user, currentStudentDoc.gradeClass))) {
             return res.status(403).json({ success: false, message: 'Access Denied: Student outside your class scope.' });
         }
 
         // Prevent a class teacher from moving a student into a class they do not own
-        if (gradeClass && gradeClass !== teacherProfile.classTeacherOf) {
+        const scope = await getTeacherScope(req.user.id);
+        if (gradeClass && !scope.classTeacherClasses.includes(gradeClass)) {
             return res.status(403).json({ success: false, message: 'Access Denied: You cannot reassign students to another class.' });
         }
 
@@ -366,17 +369,19 @@ router.delete('/users/delete/:id', protect, authorizeRoles('teacher'), validate(
             return res.status(401).json({ success: false, message: 'Security check failed: Password authentication mismatch.' });
         }
 
-        // 3. Locate the profiles to ensure class boundary isolation criteria match
-        const teacherProfile = await Teacher.findOne({ userId: req.user.id });
+        // 3. Locate the profile and ensure class boundary isolation criteria match
         const student = await Student.findOne({ userId: req.params.id });
 
-        if (!student || !teacherProfile || student.gradeClass !== teacherProfile.classTeacherOf) {
+        if (!student || !(await canAccessClass(req.user, student.gradeClass))) {
             return res.status(403).json({ success: false, message: 'Unauthorized profile deletion boundaries. Access Denied.' });
         }
 
         // 4. Cascade delete across both student data schemas collections safely
         await Student.deleteOne({ userId: req.params.id });
         await User.deleteOne({ _id: req.params.id });
+
+        // 5. Close the roll-number gap left behind so the class stays contiguous.
+        await reindexRollsAfterDelete(student.gradeClass, student.rollNumber);
 
         res.json({ success: true, message: 'Student successfully unlinked and dropped from system registries.' });
     } catch (error) {

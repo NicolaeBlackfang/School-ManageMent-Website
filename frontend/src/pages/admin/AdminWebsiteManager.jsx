@@ -5,16 +5,17 @@ import {
   PageContainer,
   PageHeader,
   Card,
-  MessageBanner,
   inputClass,
   labelClass,
   btnPrimary,
   btnDark,
 } from '../../components/ui.jsx';
 import { IconBack, IconPlus, IconTrash, IconUser, IconUsers } from '../../components/icons.jsx';
+import { useToast } from '../../context/ToastContext.jsx';
 
 const AdminWebsiteManager = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [welcomeTitle, setWelcomeTitle] = useState('');
   const [aboutText, setAboutText] = useState('');
   const [logoFile, setLogoFile] = useState(null);
@@ -28,7 +29,6 @@ const AdminWebsiteManager = () => {
   const [founderPhoto, setFounderPhoto] = useState(null);
 
   const [submitting, setSubmitting] = useState(false);
-  const [statusMsg, setStatusMsg] = useState('');
 
   useEffect(() => {
     fetchWebConfig();
@@ -47,7 +47,6 @@ const AdminWebsiteManager = () => {
   const handleUpdateWebsite = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    setStatusMsg('');
     try {
       const formData = new FormData();
       formData.append('welcomeTitle', welcomeTitle);
@@ -56,10 +55,10 @@ const AdminWebsiteManager = () => {
       if (bannerFile) formData.append('banner', bannerFile[0]);
 
       await api.post('/public/info/update', formData);
-      setStatusMsg('Website parameters updated live successfully!');
+      toast.success('Website parameters updated live successfully!');
       fetchWebConfig();
     } catch {
-      setStatusMsg('Failed to update web parameters.');
+      toast.error('Failed to update web parameters.');
     } finally {
       setSubmitting(false);
     }
@@ -68,7 +67,6 @@ const AdminWebsiteManager = () => {
   const handleAddFounderSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    setStatusMsg('');
     try {
       const formData = new FormData();
       formData.append('name', founderName);
@@ -78,7 +76,7 @@ const AdminWebsiteManager = () => {
 
       await api.post('/public/founder/add', formData);
 
-      setStatusMsg('New leader committed to public rows successfully!');
+      toast.success('New leader committed to public rows successfully!');
       setFounderName('');
       setFounderDesignation('');
       setFounderQuote('');
@@ -86,7 +84,7 @@ const AdminWebsiteManager = () => {
       document.getElementById('founderPhotoInput').value = '';
       fetchWebConfig();
     } catch {
-      setStatusMsg('Failed to append profile card.');
+      toast.error('Failed to append profile card.');
     } finally {
       setSubmitting(false);
     }
@@ -96,10 +94,10 @@ const AdminWebsiteManager = () => {
     if (!window.confirm("Remove this board member card from public view?")) return;
     try {
       await api.delete(`/public/founder/${founderId}`);
-      setStatusMsg('Leadership profile removed cleanly.');
+      toast.success('Leadership profile removed cleanly.');
       fetchWebConfig();
     } catch {
-      setStatusMsg('Failed to delete member node.');
+      toast.error('Failed to delete member node.');
     }
   };
 
@@ -115,8 +113,6 @@ const AdminWebsiteManager = () => {
             </button>
           }
         />
-
-        <MessageBanner message={statusMsg ? { text: statusMsg, type: 'info' } : null} />
 
         <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12">
           <Card className="p-5 lg:col-span-7">

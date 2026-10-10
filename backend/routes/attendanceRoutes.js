@@ -2,17 +2,9 @@
 const express = require('express');
 const router = express.Router();
 const Attendance = require('../models/Attendance');
-const Teacher = require('../models/Teacher');
 const { protect, authorizeRoles } = require('../middleware/auth');
 const { validate, schemas } = require('../middleware/validate');
-
-// ⚠️ SECURITY HELPER: Admins may access any class; a teacher only their own class.
-const canAccessClass = async (user, classId) => {
-  if (!user) return false;
-  if (user.role === 'admin') return true;
-  const teacherProfile = await Teacher.findOne({ userId: user.id }).lean();
-  return !!(teacherProfile && teacherProfile.classTeacherOf === classId);
-};
+const { canAccessClass } = require('../middleware/assignments');
 
 // @desc    Submit daily attendance roster
 // @route   POST /api/attendance

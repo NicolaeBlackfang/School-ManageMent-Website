@@ -5,11 +5,15 @@ import api from '../../core/api.js';
 import defaultAvatar from '../../assets/react.svg';
 import { PageContainer, Card, Spinner, EmptyState, MessageBanner, inputClass, labelClass, btnDanger } from '../../components/ui.jsx';
 import { IconUsers, IconPlus, IconBack } from '../../components/icons.jsx';
+import { Pagination } from '../../components/Pagination.jsx';
+import { usePagination } from '../../components/usePagination.js';
 
 const TeacherRoster = () => {
   const navigate = useNavigate();
   const [roster, setRoster] = useState([]);
   const [assignedClass, setAssignedClass] = useState('');
+  const [classTeacherClasses, setClassTeacherClasses] = useState([]);
+  const [selectedClass, setSelectedClass] = useState('');
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState({ text: '', type: '' });
 
@@ -20,16 +24,20 @@ const TeacherRoster = () => {
   const [modalError, setModalError] = useState('');
   const [modalSubmitting, setModalSubmitting] = useState(false);
 
+  const pagination = usePagination(roster, 10);
+
   useEffect(() => {
     fetchClassData();
   }, []);
 
-  const fetchClassData = async () => {
+  const fetchClassData = async (classId) => {
     setLoading(true);
     setMsg({ text: '', type: '' });
     try {
-      const { data } = await api.get('/teacher/my-class');
+      const { data } = await api.get('/teacher/my-class', { params: classId ? { classId } : {} });
       setAssignedClass(data.classTeacherOf);
+      setSelectedClass(data.classTeacherOf);
+      setClassTeacherClasses(data.classTeacherClasses || []);
       setRoster(data.roster);
     } catch (err) {
       setMsg({ text: err.response?.data?.message || 'Failed to fetch directory details.', type: 'error' });
@@ -95,6 +103,15 @@ const TeacherRoster = () => {
           </div>
         </div>
 
+        {classTeacherClasses.length > 1 && (
+          <div className="max-w-xs">
+            <label className={labelClass}>Active class</label>
+            <select value={selectedClass} onChange={(e) => fetchClassData(e.target.value)} className={`${inputClass} font-semibold`}>
+              {classTeacherClasses.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+        )}
+
         <MessageBanner message={msg} />
 
         {loading ? (
@@ -117,7 +134,7 @@ const TeacherRoster = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 bg-white">
-                  {roster.map((s) => (
+                  {pagination.pageItems.map((s) => (
                     <tr key={s._id} className="transition-colors hover:bg-slate-50/50">
                       <td className="px-6 py-4 font-mono text-sm font-bold text-brand-600">Roll #{s.rollNumber}</td>
                       <td className="px-6 py-4">
@@ -153,6 +170,7 @@ const TeacherRoster = () => {
                 </tbody>
               </table>
             </div>
+            <Pagination {...pagination} itemLabel="students" />
           </Card>
         )}
       </div>

@@ -34,6 +34,7 @@ export const NAV = {
     { to: '/a/dashboard', label: 'Overview', icon: IconDashboard },
     { to: '/a/users', label: 'All Users', icon: IconUsers },
     { to: '/a/users/create', label: 'Create User', icon: IconPlus },
+    { to: '/a/assignments', label: 'Assignments', icon: IconShield },
     { to: '/a/notices', label: 'Notices', icon: IconBell },
     { to: '/a/approvals', label: 'Admissions', icon: IconClipboard },
     { to: '/a/website', label: 'Public Website', icon: IconSparkles },

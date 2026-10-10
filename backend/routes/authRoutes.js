@@ -18,6 +18,8 @@ const User = require('../models/User');
 const Student = require('../models/Student');
 const Teacher = require('../models/Teacher');
 const Notice = require('../models/Notice');
+const { reindexRollsAfterDelete } = require('../utils/rolls');
+const { getTeacherScope } = require('../middleware/assignments');
 
 // Public Gateways
 router.post('/register', validate(schemas.register), registerUser);
@@ -201,11 +203,14 @@ router.post('/users/create', protect, authorizeRoles('admin', 'teacher'), valida
 
     let assignedClass = extraField1 || 'Unassigned';
     if (req.user.role === 'teacher') {
-      const teacherProfile = await Teacher.findOne({ userId: req.user.id }).lean();
-      if (!teacherProfile || teacherProfile.classTeacherOf === 'None') {
+      const scope = await getTeacherScope(req.user.id);
+      const requested = extraField1 && scope.classTeacherClasses.includes(extraField1)
+        ? extraField1
+        : scope.classTeacherClasses[0];
+      if (!requested) {
         return res.status(403).json({ success: false, message: 'You are not assigned as a class teacher to any class.' });
       }
-      assignedClass = teacherProfile.classTeacherOf;
+      assignedClass = requested;
     }
 
     const user = await User.create({ name: name.trim(), email: normalizedEmail, password, role });
@@ -341,10 +346,30 @@ router.delete('/users/teacher/:id', protect, authorizeRoles('admin'), validate(s
       return res.status(401).json({ success: false, message: 'Security check failed: Password authentication mismatch.' });
     }
 
-    await Teacher.deleteOne({ userId: req.params.id });
-    await User.deleteOne({ _id: req.params.id });
+    const targetUser = await User.findById(req.params.id);
+    if (!targetUser) {
+      return res.status(404).json({ success: false, message: 'Target profile reference dropped.' });
+    }
 
-    res.json({ success: true, message: 'Teacher profile cleanly purged from all cloud layers.' });
+    let message = 'Teacher profile cleanly purged from all cloud layers.';
+
+    if (targetUser.role === 'student') {
+      // Remove BOTH the Student profile and the User account, then close the
+      // roll-number gap — previously only the User was removed, orphaning the
+      // Student document and leaving a hole in the class roll list.
+      const student = await Student.findOne({ userId: targetUser._id });
+      if (student) {
+        await Student.deleteOne({ _id: student._id });
+        await reindexRollsAfterDelete(student.gradeClass, student.rollNumber);
+      }
+      await User.deleteOne({ _id: targetUser._id });
+      message = 'Student profile cleanly purged from all cloud layers.';
+    } else {
+      await Teacher.deleteOne({ userId: targetUser._id });
+      await User.deleteOne({ _id: targetUser._id });
+    }
+
+    res.json({ success: true, message });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Request failed.' });
   }

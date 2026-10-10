@@ -1,23 +1,28 @@
 // src/pages/TeacherGradebook.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import api from '../../core/api.js';
 import {
   PageContainer,
   PageHeader,
   Card,
   Spinner,
-  MessageBanner,
+  EmptyState,
   inputClass,
   labelClass,
   btnPrimary,
   btnSecondary,
 } from '../../components/ui.jsx';
 import { IconBook, IconShield, IconUpload, IconClipboard } from '../../components/icons.jsx';
+import { useToast } from '../../context/ToastContext.jsx';
+import { Pagination } from '../../components/Pagination.jsx';
+import { usePagination } from '../../components/usePagination.js';
 
 const TeacherGradebook = () => {
-  // Global configuration options
-  const [globalClasses, setGlobalClasses] = useState([]);
-  const [globalSubjects, setGlobalSubjects] = useState([]);
+  const toast = useToast();
+
+  // Teacher scope (assigned subject/class pairs + class-teacher classes)
+  const [subjectPairs, setSubjectPairs] = useState([]);
+  const [classTeacherClasses, setClassTeacherClasses] = useState([]);
   const [globalTerms, setGlobalTerms] = useState([]);
 
   // Active dropdown selections
@@ -28,64 +33,73 @@ const TeacherGradebook = () => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [fetchingConfig, setFetchingConfig] = useState(true);
-  const [message, setMessage] = useState({ text: '', type: '' });
 
-  // Publication state tracker for class teachers
-  const [isClassTeacher, setIsClassTeacher] = useState(false);
   const [publishing, setPublishing] = useState(false);
 
-  useEffect(() => {
-    const fetchSystemConfig = async () => {
-      try {
-        const { data } = await api.get('/config');
-        if (data.success) {
-          setGlobalClasses(data.data.classes || []);
-          setGlobalSubjects(data.data.subjects || []);
-          setGlobalTerms(data.data.examTerms || ['Mid-Term Exam', 'Final Exam']);
+  const pagination = usePagination(students, 15);
 
-          if (data.data.classes.length > 0) setSelectedClass(data.data.classes[0]);
-          if (data.data.subjects.length > 0) setSelectedSubject(data.data.subjects[0]);
-          if (data.data.examTerms?.length > 0) setSelectedTerm(data.data.examTerms[0]);
-        }
+  // Only classes where the teacher actually holds a subject assignment are gradable.
+  const assignedClasses = useMemo(
+    () => [...new Set(subjectPairs.map((p) => p.class))],
+    [subjectPairs]
+  );
+  // Resolve the active class/subject at render time so no defaulting effect is needed.
+  const activeClass = selectedClass && assignedClasses.includes(selectedClass)
+    ? selectedClass
+    : (assignedClasses[0] || '');
+  const subjectsForClass = useMemo(
+    () => subjectPairs.filter((p) => p.class === activeClass).map((p) => p.subject),
+    [subjectPairs, activeClass]
+  );
+  const activeSubject = selectedSubject && subjectsForClass.includes(selectedSubject)
+    ? selectedSubject
+    : (subjectsForClass[0] || '');
+  const isClassTeacher = classTeacherClasses.includes(activeClass);
+
+  useEffect(() => {
+    const loadScope = async () => {
+      try {
+        const [scopeRes, configRes] = await Promise.all([
+          api.get('/teacher/my-scope'),
+          api.get('/config'),
+        ]);
+        const scope = scopeRes.data.data || {};
+        setSubjectPairs(scope.subjectPairs || []);
+        setClassTeacherClasses(scope.classTeacherClasses || []);
+
+        const terms = configRes.data.data?.examTerms || [];
+        const resolvedTerms = terms.length ? terms : ['Mid-Term Exam', 'Final Exam'];
+        setGlobalTerms(resolvedTerms);
+        setSelectedTerm((prev) => prev || resolvedTerms[0]);
       } catch {
-        console.error('Failed to stream global configurations.');
+        toast.error('Failed to load your teaching assignments.');
       } finally {
         setFetchingConfig(false);
       }
     };
-    fetchSystemConfig();
+    loadScope();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    const checkTeacherRoleBoundaries = async () => {
-      try {
-        const { data } = await api.get('/teacher/my-class');
-        setIsClassTeacher(data.classTeacherOf === selectedClass);
-      } catch {
-        console.log('Profile role check bypass.');
-      }
-    };
-    checkTeacherRoleBoundaries();
-  }, [selectedClass]);
-
   const fetchSpreadsheet = async () => {
-    if (!selectedClass || !selectedSubject || !selectedTerm || fetchingConfig) return;
+    if (!activeClass || !activeSubject || !selectedTerm || fetchingConfig) return;
     setLoading(true);
-    setMessage({ text: '', type: '' });
 
     try {
-      const { data } = await api.get(`/grades/class/${selectedClass}/subject/${selectedSubject}/term/${selectedTerm}`);
+      const { data } = await api.get(`/grades/class/${activeClass}/subject/${activeSubject}/term/${selectedTerm}`);
       setStudents(data.data);
     } catch {
-      setMessage({ text: 'Failed to safely query class grade sheets.', type: 'error' });
+      toast.error('You are not authorised to view this grade sheet.');
+      setStudents([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchSpreadsheet();
-  }, [selectedClass, selectedSubject, selectedTerm, fetchingConfig]);
+    (async () => { await fetchSpreadsheet(); })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeClass, activeSubject, selectedTerm, fetchingConfig]);
 
   const handleMarkChange = (studentId, value) => {
     setStudents(prev => prev.map(s => s.studentId === studentId ? { ...s, marksObtained: value } : s));
@@ -93,7 +107,6 @@ const TeacherGradebook = () => {
 
   const handleBulkSubmit = async (e) => {
     e.preventDefault();
-    setMessage({ text: '', type: '' });
 
     const verifiedScores = students.filter(s => s.marksObtained !== '').map(s => ({
       studentId: s.studentId,
@@ -101,35 +114,34 @@ const TeacherGradebook = () => {
     }));
 
     if (verifiedScores.length === 0) {
-      setMessage({ text: 'Please enter marks for at least one student before saving.', type: 'error' });
+      toast.error('Please enter marks for at least one student before saving.');
       return;
     }
 
     try {
-      const payload = { classId: selectedClass, subject: selectedSubject, term: selectedTerm, scores: verifiedScores };
+      const payload = { classId: activeClass, subject: activeSubject, term: selectedTerm, scores: verifiedScores };
 
       await api.post('/grades/bulk-submit', payload);
-      setMessage({ text: `${selectedSubject} marks successfully saved.`, type: 'success' });
+      toast.success(`${activeSubject} marks successfully saved.`);
       fetchSpreadsheet();
     } catch {
-      setMessage({ text: 'Failed to execute database write operations.', type: 'error' });
+      toast.error('Failed to save subject scores.');
     }
   };
 
   const handleTogglePublish = async (state) => {
     setPublishing(true);
     try {
-      const payload = { classId: selectedClass, term: selectedTerm, publishState: state };
+      const payload = { classId: activeClass, term: selectedTerm, publishState: state };
       await api.post('/grades/toggle-publish', payload);
 
-      setMessage({
-        text: state
-          ? "Results broadcast live. Students can now view their report cards."
-          : "Results retracted to draft mode. Grades are now hidden from students.",
-        type: 'success'
-      });
+      toast.success(
+        state
+          ? 'Results broadcast live. Students can now view their report cards.'
+          : 'Results retracted to draft mode. Grades are now hidden from students.'
+      );
     } catch {
-      setMessage({ text: 'Failed to update publication state.', type: 'error' });
+      toast.error('Failed to update publication state.');
     } finally {
       setPublishing(false);
     }
@@ -139,6 +151,23 @@ const TeacherGradebook = () => {
     return (
       <PageContainer>
         <div className="flex min-h-[50vh] items-center justify-center"><Spinner className="h-10 w-10" /></div>
+      </PageContainer>
+    );
+  }
+
+  if (assignedClasses.length === 0) {
+    return (
+      <PageContainer className="max-w-6xl">
+        <div className="animate-fade-up space-y-6">
+          <PageHeader
+            title="Subject gradebook"
+            subtitle="Record marks across class, subject and term. Class teachers can publish results live."
+          />
+          <EmptyState
+            title="No subjects assigned"
+            message="You have not been assigned any subjects to grade yet. Please contact an administrator to grant you a subject/class assignment."
+          />
+        </div>
       </PageContainer>
     );
   }
@@ -175,14 +204,14 @@ const TeacherGradebook = () => {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
               <label className={labelClass}>Class</label>
-              <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className={inputClass}>
-                {globalClasses.map((c, i) => <option key={i} value={c}>{c}</option>)}
+              <select value={activeClass} onChange={(e) => setSelectedClass(e.target.value)} className={inputClass}>
+                {assignedClasses.map((c, i) => <option key={i} value={c}>{c}</option>)}
               </select>
             </div>
             <div>
               <label className={labelClass}>Subject</label>
-              <select value={selectedSubject} onChange={(e) => setSelectedSubject(e.target.value)} className={inputClass}>
-                {globalSubjects.map((s, i) => <option key={i} value={s}>{s}</option>)}
+              <select value={activeSubject} onChange={(e) => setSelectedSubject(e.target.value)} className={inputClass}>
+                {subjectsForClass.map((s, i) => <option key={i} value={s}>{s}</option>)}
               </select>
             </div>
             <div>
@@ -191,10 +220,6 @@ const TeacherGradebook = () => {
                 {globalTerms.map((t, i) => <option key={i} value={t}>{t}</option>)}
               </select>
             </div>
-          </div>
-
-          <div className="mt-4">
-            <MessageBanner message={message} />
           </div>
 
           {loading ? (
@@ -214,7 +239,7 @@ const TeacherGradebook = () => {
                   <tbody className="divide-y divide-slate-100 bg-white">
                     {students.length === 0 ? (
                       <tr><td colSpan="4" className="py-8 text-center text-slate-400">No students are currently registered in {selectedClass}.</td></tr>
-                    ) : students.map(s => (
+                    ) : pagination.pageItems.map(s => (
                       <tr key={s.studentId} className="transition-colors hover:bg-slate-50/50">
                         <td className="px-6 py-4 font-mono text-sm font-bold text-brand-600">
                           Roll #{s.studentRollId || 'N/A'}
@@ -237,6 +262,11 @@ const TeacherGradebook = () => {
                   </tbody>
                 </table>
               </div>
+              {students.length > 0 && (
+                <div className="overflow-hidden rounded-xl border border-slate-200/80">
+                  <Pagination {...pagination} itemLabel="students" />
+                </div>
+              )}
               {students.length > 0 && (
                 <div className="flex justify-end pt-2">
                   <button type="submit" className={btnPrimary}>

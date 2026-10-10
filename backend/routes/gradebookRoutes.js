@@ -3,30 +3,17 @@ const express = require('express');
 const router = express.Router();
 const { protect, authorizeRoles } = require('../middleware/auth');
 const { validate, schemas } = require('../middleware/validate');
-const Teacher = require('../models/Teacher');
+const { requireAssignment, findOutOfClassStudents } = require('../middleware/assignments');
 const Student = require('../models/Student');
 const Gradebook = require('../models/Gradebook');
-
-// ⚠️ SECURITY HELPER: Admins may access any class; a teacher only their own class.
-const canAccessClass = async (user, classId) => {
-  if (!user) return false;
-  if (user.role === 'admin') return true;
-  const teacherProfile = await Teacher.findOne({ userId: user.id }).lean();
-  return !!(teacherProfile && teacherProfile.classTeacherOf === classId);
-};
 
 // @desc    Get student roster for any target class along with existing marks for a specific subject
 // @route   GET /api/grades/class/:classId/subject/:subjectName/term/:termName
 // @access  Private (Teachers & Admins)
-router.get('/class/:classId/subject/:subjectName/term/:termName', protect, authorizeRoles('teacher', 'admin'), validate(schemas.spreadsheetParams, 'params'), async (req, res) => {
+router.get('/class/:classId/subject/:subjectName/term/:termName', protect, authorizeRoles('teacher', 'admin'), validate(schemas.spreadsheetParams, 'params'), requireAssignment(), async (req, res) => {
   const { classId, subjectName, termName } = req.params;
 
   try {
-    // ⚠️ Authorization: prevent cross-class data access
-    if (!(await canAccessClass(req.user, classId))) {
-      return res.status(403).json({ success: false, message: 'Access Denied: class outside your scope.' });
-    }
-
     // 1. Fetch all students belonging to the target class dropdown selection, sorted by roll position
     const students = await Student.find({ gradeClass: classId })
       .populate('userId', 'name email')
@@ -59,17 +46,19 @@ router.get('/class/:classId/subject/:subjectName/term/:termName', protect, autho
 // @desc    Bulk upload or overwrite marks for a specific subject row
 // @route   POST /api/grades/bulk-submit
 // @access  Private (Teachers & Admins)
-router.post('/bulk-submit', protect, authorizeRoles('teacher', 'admin'), validate(schemas.bulkSubmit), async (req, res) => {
+router.post('/bulk-submit', protect, authorizeRoles('teacher', 'admin'), validate(schemas.bulkSubmit), requireAssignment(), async (req, res) => {
   const { classId, subject, term, scores } = req.body;
 
   try {
-    // ⚠️ Authorization: a teacher may only submit marks for their own class
-    if (!(await canAccessClass(req.user, classId))) {
-      return res.status(403).json({ success: false, message: 'Access Denied: class outside your scope.' });
-    }
-
     if (!Array.isArray(scores)) {
       return res.status(400).json({ success: false, message: 'Invalid scores payload.' });
+    }
+
+    // ⚠️ Never trust client studentIds: every scored student must belong to the
+    // targeted class, otherwise a grade row could be fabricated across classes.
+    const outOfClass = await findOutOfClassStudents(classId, scores.map((item) => item.studentId));
+    if (outOfClass.length > 0) {
+      return res.status(400).json({ success: false, message: 'One or more students do not belong to the targeted class.' });
     }
 
     const bulkOperations = scores.map(item => {
@@ -109,16 +98,10 @@ router.post('/bulk-submit', protect, authorizeRoles('teacher', 'admin'), validat
 // @desc    Allow Class Teachers to toggle publication states for their entire class scores matrix
 // @route   POST /api/grades/toggle-publish
 // @access  Private (Teachers only)
-router.post('/toggle-publish', protect, authorizeRoles('teacher'), validate(schemas.togglePublish), async (req, res) => {
+router.post('/toggle-publish', protect, authorizeRoles('teacher'), validate(schemas.togglePublish), requireAssignment({ requireSubject: false }), async (req, res) => {
   const { classId, term, publishState } = req.body; // publishState = true or false
 
   try {
-    // Security layer: Confirm this teacher actually owns this class section space
-    const teacherProfile = await Teacher.findOne({ userId: req.user.id });
-    if (!teacherProfile || teacherProfile.classTeacherOf !== classId) {
-      return res.status(403).json({ success: false, message: 'Access Denied: You can only publish grades for your own assigned class section.' });
-    }
-
     // ⚡ Execute a bulk update flag flip across all subject cards for this class term
     await Gradebook.updateMany(
       { classId, term },

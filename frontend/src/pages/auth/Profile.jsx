@@ -7,15 +7,16 @@ import TwoFactorModal from '../../components/TwoFactorModal.jsx';
 import defaultAvatar from '../../assets/react.svg';
 import { IconUpload, IconLogOut, IconUser, IconShield, IconLock } from '../../components/icons.jsx';
 import { PageContainer, Card, inputClass, labelClass, btnPrimary, btnSecondary, btnDanger } from '../../components/ui.jsx';
+import { useToast } from '../../context/ToastContext.jsx';
 
 const Profile = () => {
   const { user, logout, updateUser } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
 
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [previewUrl, setPreviewUrl] = useState(user?.profileImage || '');
-  const [message, setMessage] = useState({ text: '', type: '' });
   const [loading, setLoading] = useState(false);
 
   // 2FA controls
@@ -25,13 +26,7 @@ const Profile = () => {
 
   const isParent = user?.role === 'parent';
 
-  const flash = (text, type = 'info') => setMessage({ text, type });
-  const messageStyle =
-    message.type === 'error'
-      ? 'border-rose-200 bg-rose-50 text-rose-700'
-      : message.type === 'success'
-        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-        : 'border-sky-200 bg-sky-50 text-sky-700';
+  const flash = (text, type = 'info') => toast.push(text, type);
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
@@ -99,12 +94,6 @@ const Profile = () => {
           </div>
 
           <div className="p-6 sm:p-8">
-            {message.text && (
-              <div className={`mb-6 flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium ${messageStyle}`}>
-                {message.text}
-              </div>
-            )}
-
             {!isParent && (
               <div className="mb-6 flex items-start gap-2.5 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-700">
                 <span className="mt-0.5">ℹ️</span>

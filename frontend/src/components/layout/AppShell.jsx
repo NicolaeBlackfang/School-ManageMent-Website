@@ -1,6 +1,6 @@
 // components/layout/AppShell.jsx
 import { useState } from 'react';
-import { Outlet, Link, NavLink, useLocation } from 'react-router-dom';
+import { Outlet, Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { NAV } from './navConfig.js';
 import Wordmark from './Wordmark.jsx';
@@ -72,6 +72,7 @@ const RailBody = ({ items, user, onNavigate }) => (
 
 export const AppShell = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [drawer, setDrawer] = useState(false);
   const { pathname } = useLocation();
 
@@ -85,7 +86,7 @@ export const AppShell = () => {
 
   const onLogout = async () => {
     await logout();
-    window.location.href = '/';
+    navigate('/', { replace: true });
   };
 
   return (

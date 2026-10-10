@@ -2,17 +2,19 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../core/api.js';
-import { PageContainer, Card, Spinner, MessageBanner } from '../../components/ui.jsx';
+import { PageContainer, Card, Spinner, inputClass, labelClass } from '../../components/ui.jsx';
 import { IconCalendar, IconUsers, IconBack, IconAlert, IconShield } from '../../components/icons.jsx';
+import { useToast } from '../../context/ToastContext.jsx';
 
 const TeacherAttendance = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [roster, setRoster] = useState([]);
   const [assignedClass, setAssignedClass] = useState('');
+  const [classTeacherClasses, setClassTeacherClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [fetchingHeatmap, setFetchingHeatmap] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState({ text: '', type: '' });
 
   // Custom Calendar Layout States
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -40,6 +42,7 @@ const TeacherAttendance = () => {
     try {
       const { data } = await api.get('/teacher/my-class');
       setAssignedClass(data.classTeacherOf);
+      setClassTeacherClasses(data.classTeacherClasses || []);
     } catch (err) {
       console.error(err);
     }
@@ -67,7 +70,6 @@ const TeacherAttendance = () => {
 
   const checkAndFetchDailyRoll = async () => {
     setLoading(true);
-    setMessage({ text: '', type: '' });
 
     const dateObj = new Date(selectedDateStr);
     const isWeekend = heatmapData.weeklyOffDays.includes(dateObj.getDay());
@@ -92,7 +94,7 @@ const TeacherAttendance = () => {
           const matchingRecord = data.records.find(r => r.studentId === student._id);
           return { ...student, status: matchingRecord ? matchingRecord.status : 'Present' };
         }));
-        setMessage({ text: `Notice: Attendance for ${selectedDateStr} is already submitted. Re-saving will overwrite entries.`, type: 'info' });
+        toast.info(`Attendance for ${selectedDateStr} was already submitted. Re-saving will overwrite entries.`);
       } else {
         setRoster(standardRoster.map(s => ({ ...s, status: 'Present' })));
       }
@@ -119,7 +121,7 @@ const TeacherAttendance = () => {
       const { data } = await api.post('/config/toggle-holiday', { dateStr: selectedDateStr });
       if (data.success) {
         setHeatmapData(prev => ({ ...prev, holidays: data.holidays }));
-        setMessage({ text: 'Holiday parameters adjusted successfully.', type: 'success' });
+        toast.success('Holiday parameters adjusted successfully.');
       }
     } catch (e) {
       console.error(e);
@@ -135,11 +137,11 @@ const TeacherAttendance = () => {
     setSaving(true);
     const records = roster.map(s => ({ studentId: s._id, status: s.status }));
     try {
-      await api.post('/teacher/attendance', { date: selectedDateStr, records });
-      setMessage({ text: 'Attendance synchronized successfully!', type: 'success' });
+      await api.post('/teacher/attendance', { classId: assignedClass, date: selectedDateStr, records });
+      toast.success('Attendance synchronized successfully!');
       await fetchMonthHeatmap();
     } catch (err) {
-      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to save attendance.');
     } finally {
       setSaving(false);
     }
@@ -210,6 +212,15 @@ const TeacherAttendance = () => {
   return (
     <PageContainer className="max-w-7xl">
       <div className="animate-fade-up space-y-6">
+
+        {classTeacherClasses.length > 1 && (
+          <div className="max-w-xs">
+            <label className={labelClass}>Active class</label>
+            <select value={assignedClass} onChange={(e) => setAssignedClass(e.target.value)} className={`${inputClass} font-semibold`}>
+              {classTeacherClasses.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+        )}
 
         {/* Repeating Weekly Off-Day Control Manager */}
         <Card className="space-y-3 p-4">
@@ -307,8 +318,6 @@ const TeacherAttendance = () => {
               {currentSelectedIsHoliday ? 'Re-open selected date' : 'Toggle selected date as holiday'}
             </button>
           </div>
-
-          <MessageBanner message={message} />
 
           <form onSubmit={saveAttendanceSheet} className="space-y-6 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between border-b pb-4">

@@ -7,6 +7,7 @@ const cloudinary = require('../config/cloudinary');
 const { protect, authorizeRoles } = require('../middleware/auth');
 const { validate, schemas } = require('../middleware/validate');
 const { SchoolInfo, Application } = require('../models/PublicModels');
+const SchoolConfig = require('../models/SchoolConfig');
 const { verifyPayment } = require('../services/payment');
 
 const DEFAULT_ADMISSION_FEE = 500;
@@ -61,12 +62,14 @@ router.post('/info/update', protect, authorizeRoles('admin'), upload.fields([{ n
     info.aboutText = aboutText || info.aboutText;
     if (admissionFeeAmount !== undefined) info.admissionFeeAmount = admissionFeeAmount;
 
-    if (req.files?.logo) info.schoolLogo = await streamUpload(req.files.logo.buffer, 'school_branding');
-    if (req.files?.banner) info.bannerImage = await streamUpload(req.files.banner.buffer, 'school_branding');
+    // upload.fields() yields arrays keyed by field name — index [0] is required.
+    if (req.files?.logo?.[0]) info.schoolLogo = await streamUpload(req.files.logo[0].buffer, 'school_branding');
+    if (req.files?.banner?.[0]) info.bannerImage = await streamUpload(req.files.banner[0].buffer, 'school_branding');
 
     await info.save();
     res.json({ success: true, message: 'Website updated live!', data: info });
   } catch (error) {
+    console.error('public info/update failed:', error);
     res.status(500).json({ success: false, message: 'Request failed.' });
   }
 });
@@ -104,10 +107,23 @@ router.delete('/founder/:founderId', protect, authorizeRoles('admin'), validate(
 // @route   POST /api/public/apply
 router.post('/apply', validate(schemas.admissionApply), async (req, res) => {
   try {
-    const config = await SchoolInfo.findOne().lean();
+    const [config, schoolConfig] = await Promise.all([
+      SchoolInfo.findOne().lean(),
+      SchoolConfig.findOne().lean(),
+    ]);
     // Server-set fee: use the configured amount, fall back to the default when
     // the field is absent (legacy documents). The client never supplies this.
     const fee = Math.max(0, Number(config?.admissionFeeAmount ?? DEFAULT_ADMISSION_FEE) || 0);
+
+    // The class list is controlled by the admin in Settings (SchoolConfig). Only
+    // accept a class that is actually registered in the database.
+    const approvedClasses = Array.isArray(schoolConfig?.classes) ? schoolConfig.classes : [];
+    if (approvedClasses.length > 0 && !approvedClasses.includes(req.body.targetClass)) {
+      return res.status(400).json({
+        success: false,
+        message: 'The targeted class is not approved in the school database. Please choose a class from the current list.',
+      });
+    }
 
     // ⚠️ SECURITY: Explicit allow-list instead of spreading req.body.
     // This prevents mass assignment of server-controlled fields such as

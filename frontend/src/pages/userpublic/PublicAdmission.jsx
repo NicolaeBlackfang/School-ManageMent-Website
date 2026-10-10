@@ -1,5 +1,5 @@
 // src/pages/userpublic/PublicAdmission.jsx
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../core/api.js';
 import { IconClipboard, IconCheckCircle, IconPrinter, IconBack, IconMoney } from '../../components/icons.jsx';
@@ -21,12 +21,28 @@ const PublicAdmission = () => {
   const [txnId, setTxnId] = useState('');
 
   const [formData, setFormData] = useState({
-    studentNameEn: '', studentNameBn: '', dateOfBirth: '', birthCertificateNo: '', targetClass: 'Grade 10-A', emailAddress: '',
+    studentNameEn: '', studentNameBn: '', dateOfBirth: '', birthCertificateNo: '', targetClass: '', emailAddress: '',
     fatherNameEn: '', fatherNameBn: '', fatherNid: '', motherNameEn: '', motherNameBn: '', motherNid: '',
     parentPhone: '', guardianNameEn: '', guardianNameBn: '', guardianPhone: '',
   });
 
+  const [classOptions, setClassOptions] = useState([]);
   const [fee, setFee] = useState({ collected: '', verified: '' });
+
+  // The target-class list is managed by the admin in Settings (SchoolConfig),
+  // not hardcoded, so the admission form always mirrors the live database.
+  useEffect(() => {
+    api
+      .get('/config')
+      .then(({ data }) => {
+        const classes = Array.isArray(data?.data?.classes) ? data.data.classes : [];
+        if (classes.length) {
+          setClassOptions(classes);
+          setFormData((prev) => ({ ...prev, targetClass: classes[0] }));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleFormChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
@@ -130,10 +146,11 @@ const PublicAdmission = () => {
                   </div>
                   <div>
                     <label className={labelClass}>Target Class</label>
-                    <select name="targetClass" value={formData.targetClass} onChange={handleFormChange} className={`${inputClass} cursor-pointer`}>
-                      <option value="Grade 10-A">Grade 10-A</option>
-                      <option value="Grade 10-B">Grade 10-B</option>
-                      <option value="Grade 11-A">Grade 11-A</option>
+                    <select name="targetClass" value={formData.targetClass} onChange={handleFormChange} required className={`${inputClass} cursor-pointer`}>
+                      {classOptions.length === 0 && <option value="">Loading classes…</option>}
+                      {classOptions.map((cls) => (
+                        <option key={cls} value={cls}>{cls}</option>
+                      ))}
                     </select>
                   </div>
                 </div>

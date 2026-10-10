@@ -15,6 +15,7 @@ const authRoutes = require('./routes/authRoutes');
 const noticeRoutes = require('./routes/noticeRoutes');
 const teacherRoutes = require('./routes/teacherRoutes');
 const gradebookRoutes = require('./routes/gradebookRoutes');
+const assignmentRoutes = require('./routes/assignmentRoutes');
 
 
 // 1. Load environment variables first
@@ -158,6 +159,7 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/notices', noticeRoutes);
 app.use('/api/teacher', teacherRoutes);
 app.use('/api/grades', gradebookRoutes);
+app.use('/api', assignmentRoutes);
 app.use('/api/config', require('./routes/configRoutes'));
 app.use('/api/student', require('./routes/studentRoutes'));
 app.use('/api/public', require('./routes/publicRoutes'));

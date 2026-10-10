@@ -8,7 +8,6 @@ import {
   Badge,
   Spinner,
   EmptyState,
-  MessageBanner,
   inputClass,
   labelClass,
   btnPrimary,
@@ -16,11 +15,15 @@ import {
   btnSecondary,
 } from '../../components/ui.jsx';
 import { IconBell, IconFile, IconTrash, IconLock } from '../../components/icons.jsx';
+import { useToast } from '../../context/ToastContext.jsx';
+import { Pagination } from '../../components/Pagination.jsx';
+import { usePagination } from '../../components/usePagination.js';
 
 const audienceTone = (audience) =>
   audience === 'student' ? 'emerald' : audience === 'teacher' ? 'violet' : 'indigo';
 
 const AdminNoticeBoard = () => {
+  const toast = useToast();
   const [notices, setNotices] = useState([]);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -34,7 +37,6 @@ const AdminNoticeBoard = () => {
   const [modalError, setModalError] = useState('');
   const [modalSubmitting, setModalSubmitting] = useState(false);
 
-  const [message, setMessage] = useState({ text: '', type: '' });
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -47,7 +49,7 @@ const AdminNoticeBoard = () => {
       const { data } = await api.get('/notices');
       setNotices(data.data);
     } catch {
-      setMessage({ text: 'Failed to retrieve published bulletins.', type: 'error' });
+      toast.error('Failed to retrieve published bulletins.');
     } finally {
       setLoading(false);
     }
@@ -73,10 +75,9 @@ const AdminNoticeBoard = () => {
         headers: { 'X-Admin-Password': adminVerifyPassword },
       });
 
-      setMessage({ text: 'Notice deleted after credential authorization.', type: 'success' });
+      toast.success('Notice deleted after credential authorization.');
       setIsPasswordModalOpen(false);
       fetchNotices();
-      setTimeout(() => setMessage({ text: '', type: '' }), 4000);
     } catch (err) {
       setModalError(err.response?.data?.message || 'Verification failed. Password mismatch.');
     } finally {
@@ -87,7 +88,6 @@ const AdminNoticeBoard = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    setMessage({ text: '', type: '' });
 
     try {
       const formData = new FormData();
@@ -101,7 +101,7 @@ const AdminNoticeBoard = () => {
 
       await api.post('/notices', formData);
 
-      setMessage({ text: 'Announcement bulletin and circular PDF broadcasted live.', type: 'success' });
+      toast.success('Announcement bulletin and circular PDF broadcasted live.');
 
       setTitle('');
       setContent('');
@@ -111,11 +111,13 @@ const AdminNoticeBoard = () => {
       document.getElementById('noticePdfInput').value = '';
       fetchNotices();
     } catch (err) {
-      setMessage({ text: err.response?.data?.message || 'Failed to publish bulletin.', type: 'error' });
+      toast.error(err.response?.data?.message || 'Failed to publish bulletin.');
     } finally {
       setSubmitting(false);
     }
   };
+
+  const pagination = usePagination(notices, 10);
 
   if (loading) {
     return (
@@ -134,8 +136,6 @@ const AdminNoticeBoard = () => {
         />
 
         <Card className="p-6 sm:p-8">
-          <MessageBanner message={message} />
-
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
@@ -190,7 +190,7 @@ const AdminNoticeBoard = () => {
               title="No notices published"
               message="No notices logged in database cluster repositories yet."
             />
-          ) : notices.map((n) => (
+          ) : pagination.pageItems.map((n) => (
             <Card key={n._id} className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-start">
               <div className="max-w-2xl space-y-1.5">
                 <div className="flex flex-wrap items-center gap-2">
@@ -227,6 +227,11 @@ const AdminNoticeBoard = () => {
               </div>
             </Card>
           ))}
+          {notices.length > 0 && (
+            <Card className="overflow-hidden">
+              <Pagination {...pagination} itemLabel="notices" />
+            </Card>
+          )}
         </div>
       </div>
 

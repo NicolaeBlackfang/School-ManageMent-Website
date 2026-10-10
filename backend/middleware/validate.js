@@ -30,7 +30,9 @@ const schemas = {
   profile: z.object({
     name: z.string().trim().min(2).max(80).optional(),
     email: z.string().trim().email().toLowerCase().optional(),
-    profileImage: z.string().max(2000).optional(),
+    // Avatars are stored as base64 data URLs. The client caps uploads at 1MB
+    // (~1.4M base64 chars); allow headroom while staying under the 2mb body limit.
+    profileImage: z.string().max(2_000_000).optional(),
   }),
 
   // User management ------------------------------------------------------------
@@ -75,6 +77,7 @@ const schemas = {
     })).max(2000),
   }),
   teacherSubmitAttendance: z.object({
+    classId: z.string().trim().max(80).optional().or(z.literal('')),
     date: z.string().min(8).max(20),
     records: z.array(z.object({
       studentId: z.string().regex(/^[0-9a-fA-F]{24}$/),
@@ -116,6 +119,26 @@ const schemas = {
     classId: z.string().trim().max(80),
     term: z.string().trim().min(1).max(80),
     publishState: z.boolean(),
+  }),
+
+  // Assignments ---------------------------------------------------------------------
+  assignmentCreate: z.object({
+    teacher: z.string().regex(/^[0-9a-fA-F]{24}$/),
+    class: z.string().trim().min(1).max(80),
+    subject: z.string().trim().max(80).optional().or(z.literal('')),
+    academicYear: z.string().trim().max(20).optional().or(z.literal('')),
+    isClassTeacher: z.boolean().optional(),
+  }),
+  assignmentUpdate: z.object({
+    subject: z.string().trim().max(80).optional().or(z.literal('')),
+    academicYear: z.string().trim().max(20).optional().or(z.literal('')),
+    isClassTeacher: z.boolean().optional(),
+  }),
+  assignmentQuery: z.object({
+    teacher: z.string().regex(/^[0-9a-fA-F]{24}$/).optional().or(z.literal('')),
+    class: z.string().trim().max(80).optional().or(z.literal('')),
+    subject: z.string().trim().max(80).optional().or(z.literal('')),
+    academicYear: z.string().trim().max(20).optional().or(z.literal('')),
   }),
 
   // School config ---------------------------------------------------------------------
