@@ -8,6 +8,7 @@ const bcrypt = require('bcryptjs');
 const cloudinary = require('../config/cloudinary');
 
 const { protect, authorizeRoles } = require('../middleware/auth');
+const { validate, schemas } = require('../middleware/validate');
 const Notice = require('../models/Notice');
 const User = require('../models/User');
 
@@ -20,10 +21,15 @@ const fileFilter = (req, file, cb) => {
     cb(new Error('Validation Aborted: Notice attachments must be in PDF layout format only!'), false);
   }
 };
-const upload = multer({ storage, fileFilter });
+// Cap the in-memory buffer so a large upload cannot exhaust server memory (DoS).
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 10 * 1024 * 1024, files: 1 }, // 10MB, single PDF
+});
 
 
-router.post('/', protect, authorizeRoles('admin'), upload.single('pdfFile'), async (req, res) => {
+router.post('/', protect, authorizeRoles('admin'), upload.single('pdfFile'), validate(schemas.createNotice), async (req, res) => {
   const { title, content, targetAudience } = req.body;
 
   try {
@@ -86,7 +92,7 @@ router.get('/', protect, async (req, res) => {
 
 // @desc    Verify admin credentials before critical destruction actions
 // @route   POST /api/notices/verify-admin-password
-router.post('/verify-admin-password', protect, authorizeRoles('admin'), async (req, res) => {
+router.post('/verify-admin-password', protect, authorizeRoles('admin'), validate(schemas.passwordCheck), async (req, res) => {
   const { password } = req.body;
   try {
     const user = await User.findById(req.user.id).select('+password');
@@ -104,7 +110,7 @@ router.post('/verify-admin-password', protect, authorizeRoles('admin'), async (r
 
 // @desc    Wipe/Delete an institutional notice permanently with Cloudinary asset cleanup
 // @route   DELETE /api/notices/:id
-router.delete('/:id', protect, authorizeRoles('admin'), async (req, res) => {
+router.delete('/:id', protect, authorizeRoles('admin'), validate(schemas.idParam, 'params'), async (req, res) => {
   const adminPassword = req.headers['x-admin-password'];
   if (!adminPassword) {
     return res.status(400).json({ success: false, message: 'Security Blocked: Admin verification password string required.' });

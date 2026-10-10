@@ -1,55 +1,86 @@
-// src/pages/PublicFounders.jsx
+// src/pages/userpublic/PublicFounders.jsx
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { Spinner, EmptyState } from '../../components/ui.jsx';
+import { Link } from 'react-router-dom';
+import api from '../../core/api.js';
+import { Spinner, EmptyState, Badge } from '../../components/ui.jsx';
+import { IconBack, IconSparkles } from '../../components/icons.jsx';
 
 const PublicFounders = () => {
-  const navigate = useNavigate();
   const [founders, setFounders] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axios.get('http://localhost:5000/api/public/info')
+    api.get('/public/info')
       .then(({ data }) => { if (data.success) setFounders(data.data.founders || []); })
-      .catch((err) => console.error(err))
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
   return (
-    <div className="min-h-screen space-y-6 bg-slate-50 p-4 sm:p-8">
-      <div className="mx-auto flex max-w-7xl items-center justify-between rounded-2xl border border-slate-200/70 bg-white px-6 py-4 shadow-sm">
-        <div>
-          <h2 className="text-xl font-black tracking-tight text-slate-900">✨ Institutional Founding Board Messages</h2>
-          <p className="mt-0.5 text-xs text-slate-400">Read official dispatches straight from our leadership pillars [INDEX].</p>
+    <div className="min-h-screen bg-paper">
+      <header className="relative overflow-hidden bg-gradient-to-br from-brand-900 to-brand-950 px-4 py-14 text-white sm:px-6 sm:py-16 lg:px-8">
+        <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-brand-700/40 blur-3xl" />
+        <div className="absolute -bottom-24 left-1/3 h-64 w-64 rounded-full bg-brass-500/15 blur-3xl" />
+        <div className="relative mx-auto flex max-w-7xl flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="animate-fade-up">
+            <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-brass-300 ring-1 ring-white/15">
+              <IconSparkles className="h-4 w-4" /> Institutional Founding Board
+            </span>
+            <h1 className="font-display mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
+              The voices behind the institution.
+            </h1>
+            <p className="mt-2 max-w-xl text-sm text-brand-100/80">
+              Dispaches and commitments from the leadership pillars who guide the academy&apos;s ethos and direction.
+            </p>
+          </div>
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 self-start rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/20 transition hover:bg-white/20 sm:self-auto"
+          >
+            <IconBack className="h-4 w-4" /> Back home
+          </Link>
         </div>
-        <button onClick={() => navigate('/')} className="cursor-pointer rounded-xl border bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-500 transition hover:bg-slate-100">← Home</button>
-      </div>
+      </header>
 
-      <main className="mx-auto w-full max-w-7xl">
+      <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
         {loading ? (
-          <div className="flex justify-center py-12"><Spinner /></div>
+          <div className="flex justify-center py-16"><Spinner /></div>
         ) : founders.length === 0 ? (
           <EmptyState
             title="No board profiles yet"
-            message="No board profiles have been updated by the administration yet."
+            message="Board profiles haven't been published by the administration yet. Check back soon."
           />
         ) : (
           <div className="grid animate-fade-in grid-cols-1 gap-6 md:grid-cols-2">
             {founders.map((f) => (
-              <div key={f._id} className="flex flex-col items-center gap-4 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm transition hover:border-brand-200 hover:shadow-md sm:flex-row sm:items-start">
-                {f.image ? <img src={f.image} alt="Avatar" className="h-24 w-24 shrink-0 rounded-2xl border bg-slate-50 object-cover shadow-xs" /> : <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-3xl font-black text-brand-600">👤</div>}
-                <div className="flex-1 space-y-2 text-center sm:text-left">
+              <article
+                key={f._id}
+                className="group flex flex-col gap-5 rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm transition hover-lift sm:flex-row sm:items-start"
+              >
+                {f.image ? (
+                  <img
+                    src={f.image}
+                    alt={`Portrait of ${f.name}`}
+                    className="h-24 w-24 shrink-0 rounded-2xl border-2 border-brand-100 bg-slate-50 object-cover shadow-sm"
+                  />
+                ) : (
+                  <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 text-2xl font-bold text-white shadow-sm">
+                    {f.name.slice(0, 1).toUpperCase()}
+                  </div>
+                )}
+                <div className="flex-1 space-y-3 text-center sm:text-left">
                   <div>
-                    <h4 className="text-base font-black leading-tight text-slate-900">{f.name}</h4>
-                    <span className="mt-1 inline-block rounded-md border border-brand-100 bg-brand-50 px-2 py-0.5 text-[11px] font-black uppercase text-brand-600">{f.designation}</span>
+                    <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">{f.name}</h2>
+                    <div className="mt-2 flex justify-center sm:justify-start">
+                      <Badge tone="indigo">{f.designation}</Badge>
+                    </div>
                   </div>
-                  <div className="relative rounded-xl border bg-slate-50 p-3.5 text-xs font-medium italic leading-relaxed text-slate-600">
-                    <span className="absolute -top-1.5 left-2 font-serif text-xl text-brand-200">“</span>
-                    "{f.quote}"
-                  </div>
+                  <blockquote className="relative rounded-2xl border border-slate-200/70 bg-slate-50 p-4 text-sm leading-relaxed text-slate-600">
+                    <span className="font-display absolute -top-1 left-3 text-3xl text-brand-300">&ldquo;</span>
+                    {f.quote}
+                  </blockquote>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
         )}

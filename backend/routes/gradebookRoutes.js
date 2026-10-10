@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const { protect, authorizeRoles } = require('../middleware/auth');
+const { validate, schemas } = require('../middleware/validate');
 const Teacher = require('../models/Teacher');
 const Student = require('../models/Student');
 const Gradebook = require('../models/Gradebook');
@@ -17,7 +18,7 @@ const canAccessClass = async (user, classId) => {
 // @desc    Get student roster for any target class along with existing marks for a specific subject
 // @route   GET /api/grades/class/:classId/subject/:subjectName/term/:termName
 // @access  Private (Teachers & Admins)
-router.get('/class/:classId/subject/:subjectName/term/:termName', protect, authorizeRoles('teacher', 'admin'), async (req, res) => {
+router.get('/class/:classId/subject/:subjectName/term/:termName', protect, authorizeRoles('teacher', 'admin'), validate(schemas.spreadsheetParams, 'params'), async (req, res) => {
   const { classId, subjectName, termName } = req.params;
 
   try {
@@ -58,7 +59,7 @@ router.get('/class/:classId/subject/:subjectName/term/:termName', protect, autho
 // @desc    Bulk upload or overwrite marks for a specific subject row
 // @route   POST /api/grades/bulk-submit
 // @access  Private (Teachers & Admins)
-router.post('/bulk-submit', protect, authorizeRoles('teacher', 'admin'), async (req, res) => {
+router.post('/bulk-submit', protect, authorizeRoles('teacher', 'admin'), validate(schemas.bulkSubmit), async (req, res) => {
   const { classId, subject, term, scores } = req.body;
 
   try {
@@ -108,11 +109,10 @@ router.post('/bulk-submit', protect, authorizeRoles('teacher', 'admin'), async (
 // @desc    Allow Class Teachers to toggle publication states for their entire class scores matrix
 // @route   POST /api/grades/toggle-publish
 // @access  Private (Teachers only)
-router.post('/toggle-publish', protect, authorizeRoles('teacher'), async (req, res) => {
+router.post('/toggle-publish', protect, authorizeRoles('teacher'), validate(schemas.togglePublish), async (req, res) => {
   const { classId, term, publishState } = req.body; // publishState = true or false
 
   try {
-    const Teacher = require('../models/Teacher');
     // Security layer: Confirm this teacher actually owns this class section space
     const teacherProfile = await Teacher.findOne({ userId: req.user.id });
     if (!teacherProfile || teacherProfile.classTeacherOf !== classId) {

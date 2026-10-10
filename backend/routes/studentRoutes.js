@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const { protect, authorizeRoles } = require('../middleware/auth');
+const { validate, schemas } = require('../middleware/validate');
 const Student = require('../models/Student');
 const Attendance = require('../models/Attendance');
 const Gradebook = require('../models/Gradebook');
@@ -85,7 +86,7 @@ router.get('/my-records', protect, authorizeRoles('student'), async (req, res) =
 // @desc    Fetch personalized attendance calendar analytics matrix data for the logged-in student
 // @route   GET /api/student/my-attendance-calendar
 // @access  Private (Students only)
-router.get('/my-attendance-calendar', protect, authorizeRoles('student'), async (req, res) => {
+router.get('/my-attendance-calendar', protect, authorizeRoles('student'), validate(schemas.heatmapQuery, 'query'), async (req, res) => {
   const { year, month } = req.query;
 
   try {

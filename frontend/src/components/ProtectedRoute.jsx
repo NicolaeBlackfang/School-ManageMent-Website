@@ -7,7 +7,6 @@ import { Spinner } from './ui.jsx';
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useContext(AuthContext);
 
-  // If the global state is still verifying the user session, show a loading spinner
   if (loading) {
     return (
       <div className="flex min-h-[70vh] items-center justify-center bg-slate-50">
@@ -19,17 +18,16 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     );
   }
 
-  // If no user is logged in, redirect them immediately to the login form
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  // If a user is logged in but their role isn't allowed to view this page, kick them back to their home turf
+  const home = user.role === 'parent' ? '/p/home' : user.role === 'admin' ? '/a/dashboard' : user.role === 'teacher' ? '/t/dashboard' : '/s/dashboard';
+
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to={`/${user.role}/dashboard`} replace />;
+    return <Navigate to={home} replace />;
   }
 
-  // Otherwise, render the requested page component seamlessly
   return children;
 };
 

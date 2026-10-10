@@ -95,10 +95,23 @@ export const IconChevronDown = svg(<path d="m6 9 6 6 6-6" />);
 export const IconMenu = svg(<><line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="20" y2="17" /></>);
 export const IconX = svg(<><path d="M18 6 6 18" /><path d="m6 6 12 12" /></>);
 export const IconPlus = svg(<><path d="M12 5v14" /><path d="M5 12h14" /></>);
+export const IconLock = svg(
+  <>
+    <rect x="3" y="11" width="18" height="11" rx="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </>
+);
 export const IconShield = svg(
   <>
     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
     <path d="m9 12 2 2 4-4" />
+  </>
+);
+export const IconPrinter = svg(
+  <>
+    <polyline points="6 9 6 2 18 2 18 9" />
+    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+    <rect x="6" y="14" width="12" height="8" />
   </>
 );
 export const IconMoney = svg(

@@ -1,39 +1,45 @@
+// src/pages/userpublic/PublicAdmission.jsx
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { inputClass, labelClass, btnPrimary } from '../../components/ui.jsx';
+import { Link } from 'react-router-dom';
+import api from '../../core/api.js';
+import { IconClipboard, IconCheckCircle, IconPrinter, IconBack, IconMoney } from '../../components/icons.jsx';
+import { inputClass, labelClass, btnPrimary, btnSecondary, MessageBanner } from '../../components/ui.jsx';
+
+const steps = [
+  { id: 1, label: 'Details' },
+  { id: 2, label: 'Fee' },
+  { id: 3, label: 'Receipt' },
+];
 
 const PublicAdmission = () => {
-  const navigate = useNavigate();
-  const [step, setStep] = useState(1); // 1 = Form Entry, 2 = Fee Checkout, 3 = Confirmation Slip View
+  const [step, setStep] = useState(1);
   const [appId, setAppId] = useState('');
-  const [payableFee, setPayableFee] = useState(500);
+  const [payableFee, setPayableFee] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
-
-  // MFS Input Sub-states
   const [mfsGateway, setMfsGateway] = useState('bKash');
   const [txnId, setTxnId] = useState('');
 
-  // Dual-Language Registration Payload Setup
   const [formData, setFormData] = useState({
     studentNameEn: '', studentNameBn: '', dateOfBirth: '', birthCertificateNo: '', targetClass: 'Grade 10-A', emailAddress: '',
     fatherNameEn: '', fatherNameBn: '', fatherNid: '', motherNameEn: '', motherNameBn: '', motherNid: '',
-    parentPhone: '', guardianNameEn: '', guardianNameBn: '', guardianPhone: ''
+    parentPhone: '', guardianNameEn: '', guardianNameBn: '', guardianPhone: '',
   });
 
-  const handleFormChange = (e) => { setFormData({ ...formData, [e.target.name]: e.target.value }); };
+  const [fee, setFee] = useState({ collected: '', verified: '' });
+
+  const handleFormChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleRegistrationSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     setMessage({ text: '', type: '' });
     try {
-      const { data } = await axios.post('http://localhost:5000/api/public/apply', formData);
+      const { data } = await api.post('/public/apply', formData);
       if (data.success) {
         setAppId(data.applicationId);
         setPayableFee(data.payableAmount || 500);
-        setStep(2); // Push forward to the digital gateway fee verification pass instantly
+        setStep(2);
       }
     } catch (err) {
       setMessage({ text: 'Validation Error: Check your values and retry.', type: 'error' });
@@ -45,193 +51,272 @@ const PublicAdmission = () => {
   const handleVerifyFeePayment = async (e) => {
     e.preventDefault();
     if (txnId.trim().length < 6) {
-      alert("Please provide a valid MFS Transaction ID.");
+      setMessage({ text: 'Please provide a valid MFS Transaction ID (min 6 characters).', type: 'error' });
       return;
     }
     setSubmitting(true);
+    setMessage({ text: '', type: '' });
     try {
-      const { data } = await axios.post(`http://localhost:5000/api/public/pay-admission/${appId}`, {
-        paymentMethod: mfsGateway, txnId, amount: payableFee
+      const { data } = await api.post(`/public/pay-admission/${appId}`, {
+        paymentMethod: mfsGateway, txnId, amount: payableFee,
       });
-      if (data.success) setStep(3); // Render complete itemized PDF slip desk
+      if (data.success) {
+        setFee({ collected: payableFee, verified: new Date().toLocaleString() });
+        setStep(3);
+      }
     } catch (err) {
-      alert("Handshake verification error.");
+      setMessage({ text: 'Handshake verification error. Please re-check the transaction ID.', type: 'error' });
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 p-4 text-xs sm:p-6">
-      <div className="w-full max-w-4xl space-y-6 rounded-3xl border border-slate-200/70 bg-white p-6 shadow-xl sm:p-8 print:border-0 print:shadow-none">
-
-        {/* Header Ribbon Area */}
-        <div className="flex items-center justify-between border-b pb-4 print:hidden">
-          <div>
-            <h2 className="text-xl font-black tracking-tight text-slate-900">📝 Institutional Intake Admission Portal</h2>
-            <p className="mt-0.5 text-xs font-medium text-slate-400">Complete dual-language profiling records arrays to request student enrollment options.</p>
+    <div className="min-h-screen bg-paper px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+      <div className="mx-auto max-w-5xl">
+        {/* Header */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-700 text-white shadow-lg shadow-brand-700/20">
+              <IconClipboard className="h-6 w-6" />
+            </span>
+            <div>
+              <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+                Institutional Intake Portal
+              </h1>
+              <p className="text-sm text-slate-500">Dual-language registration, fee verification and a printable receipt.</p>
+            </div>
           </div>
-          <button onClick={() => navigate('/')} className="cursor-pointer rounded-xl border bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-600 transition-all hover:bg-slate-100">← Home Portal</button>
+          <Link to="/" className={`${btnSecondary} self-start`}>
+            <IconBack className="h-4 w-4" /> Back home
+          </Link>
         </div>
 
-        {message.text && (
-          <div className={`rounded-xl border p-3 font-bold ${message.type === 'error' ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-sky-200 bg-sky-50 text-sky-800'} print:hidden`}>
-            {message.text}
-          </div>
-        )}
+        {/* Stepper */}
+        <ol className="mt-8 flex items-center gap-2 print:hidden">
+          {steps.map((s, i) => (
+            <li key={s.id} className={`flex items-center gap-2 ${i > 0 ? 'flex-1' : ''}`}>
+              {i > 0 && <span className={`h-px flex-1 ${step > i ? 'bg-brand-500' : 'bg-slate-200'}`} />}
+              <span
+                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ring-2 ${
+                  step >= s.id ? 'bg-brand-600 text-white ring-brand-600' : 'bg-white text-slate-400 ring-slate-200'
+                }`}
+              >
+                {step > s.id ? <IconCheckCircle className="h-4 w-4" /> : s.id}
+              </span>
+              <span className={`text-xs font-semibold ${step >= s.id ? 'text-slate-800' : 'text-slate-400'}`}>{s.label}</span>
+            </li>
+          ))}
+        </ol>
 
-        {/* STEP 1: DEEP BIOGRAPHICAL FIELDS GRID LISTING ROW */}
-        {step === 1 && (
-          <form onSubmit={handleRegistrationSubmit} className="space-y-7">
+        <div className="mt-6 rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xl shadow-slate-900/5 sm:p-8 print:border-0 print:shadow-none">
+          <MessageBanner message={message} />
 
-            {/* Subsection 1: Student biographicals blocks */}
-            <div className="space-y-3">
-              <h3 className="border-b pb-1 text-xs font-black uppercase tracking-wide text-brand-600">👨‍🎓 Student Biographical Information</h3>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div>
-                  <label className={labelClass}>Student Full Name (English)</label>
-                  <input type="text" required name="studentNameEn" value={formData.studentNameEn} onChange={handleFormChange} placeholder="e.g. John Doe" className={inputClass} />
+          {/* STEP 1 */}
+          {step === 1 && (
+            <form onSubmit={handleRegistrationSubmit} className="space-y-8">
+              <section className="space-y-4">
+                <h2 className="flex items-center gap-2 border-b border-slate-200 pb-2 text-sm font-bold uppercase tracking-wider text-brand-700">
+                  Student Biographical Information
+                </h2>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div>
+                    <label className={labelClass}>Student Full Name (English)</label>
+                    <input type="text" required name="studentNameEn" value={formData.studentNameEn} onChange={handleFormChange} placeholder="e.g. John Doe" className={inputClass} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>শিক্ষার্থীর পূর্ণ নাম (বাংলায়)</label>
+                    <input type="text" required name="studentNameBn" value={formData.studentNameBn} onChange={handleFormChange} placeholder="যেমন: জন ডো" className={inputClass} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Target Class</label>
+                    <select name="targetClass" value={formData.targetClass} onChange={handleFormChange} className={`${inputClass} cursor-pointer`}>
+                      <option value="Grade 10-A">Grade 10-A</option>
+                      <option value="Grade 10-B">Grade 10-B</option>
+                      <option value="Grade 11-A">Grade 11-A</option>
+                    </select>
+                  </div>
                 </div>
-                <div>
-                  <label className={labelClass}>শিক্ষার্থীর পূর্ণ নাম (বাংলায়)</label>
-                  <input type="text" required name="studentNameBn" value={formData.studentNameBn} onChange={handleFormChange} placeholder="যেমন: জন ডো" className={inputClass} />
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div>
+                    <label className={labelClass}>Date of Birth</label>
+                    <input type="date" required name="dateOfBirth" value={formData.dateOfBirth} onChange={handleFormChange} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Birth Certificate Number</label>
+                    <input type="text" required name="birthCertificateNo" value={formData.birthCertificateNo} onChange={handleFormChange} placeholder="17-digit digital token" className={`${inputClass} font-mono`} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Email for Communications</label>
+                    <input type="email" required name="emailAddress" value={formData.emailAddress} onChange={handleFormChange} placeholder="contact@domain.com" className={inputClass} />
+                  </div>
                 </div>
+              </section>
+
+              <section className="space-y-4">
+                <h2 className="flex items-center gap-2 border-b border-slate-200 pb-2 text-sm font-bold uppercase tracking-wider text-brand-700">
+                  Parents Profile Matrix
+                </h2>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div>
+                    <label className={labelClass}>Father&apos;s Name (English)</label>
+                    <input type="text" required name="fatherNameEn" value={formData.fatherNameEn} onChange={handleFormChange} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>পিতার নাম (বাংলায়)</label>
+                    <input type="text" required name="fatherNameBn" value={formData.fatherNameBn} onChange={handleFormChange} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Father&apos;s NID (Optional)</label>
+                    <input type="text" name="fatherNid" value={formData.fatherNid} onChange={handleFormChange} placeholder="Smart card / NID no" className={`${inputClass} font-mono`} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div>
+                    <label className={labelClass}>Mother&apos;s Name (English)</label>
+                    <input type="text" required name="motherNameEn" value={formData.motherNameEn} onChange={handleFormChange} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>মাতার নাম (বাংলায়)</label>
+                    <input type="text" required name="motherNameBn" value={formData.motherNameBn} onChange={handleFormChange} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Mother&apos;s NID (Optional)</label>
+                    <input type="text" name="motherNid" value={formData.motherNid} onChange={handleFormChange} placeholder="Smart card / NID no" className={`${inputClass} font-mono`} />
+                  </div>
+                </div>
+                <div className="sm:max-w-sm">
+                  <label className={labelClass}>Primary Parent Phone</label>
+                  <input type="tel" required name="parentPhone" value={formData.parentPhone} onChange={handleFormChange} placeholder="017XXXXXXXX" className={`${inputClass} font-mono`} />
+                </div>
+              </section>
+
+              <section className="space-y-4">
+                <h2 className="flex items-center gap-2 border-b border-slate-200 pb-2 text-sm font-bold uppercase tracking-wider text-brand-700">
+                  Emergency Legal Guardian Backup
+                </h2>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div>
+                    <label className={labelClass}>Guardian Name (English)</label>
+                    <input type="text" name="guardianNameEn" value={formData.guardianNameEn} onChange={handleFormChange} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>অভিভাবকের নাম (বাংলায়)</label>
+                    <input type="text" name="guardianNameBn" value={formData.guardianNameBn} onChange={handleFormChange} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Guardian Contact Phone</label>
+                    <input type="tel" name="guardianPhone" value={formData.guardianPhone} onChange={handleFormChange} placeholder="018XXXXXXXX" className={`${inputClass} font-mono`} />
+                  </div>
+                </div>
+              </section>
+
+              <button type="submit" disabled={submitting} className={`${btnPrimary} w-full py-3.5`}>
+                <IconClipboard className="h-4 w-4" />
+                {submitting ? 'Submitting profile...' : 'Submit details & proceed to fee payment'}
+              </button>
+            </form>
+          )}
+
+          {/* STEP 2 */}
+          {step === 2 && (
+            <form onSubmit={handleVerifyFeePayment} className="mx-auto max-w-md space-y-6 text-center">
+              <div className="space-y-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-700 ring-1 ring-amber-100">
+                  <IconMoney className="h-3.5 w-3.5" /> Secure Fee Checkout
+                </span>
+                <h2 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Admission Form Fee Settle</h2>
+                <p className="font-display text-4xl font-semibold text-brand-700">{`\u09F3${payableFee}.00`} BDT</p>
+                <p className="mx-auto max-w-sm text-sm text-slate-500">
+                  Choose a mobile banking platform, transfer{' '}
+                  {`\u09F3${payableFee}.00`} to the school merchant wallet, then enter the return TxnID below.
+                </p>
+              </div>
+
+              <div className="flex justify-center gap-2">
+                {['bKash', 'Nagad', 'Rocket'].map((mfs) => (
+                  <button
+                    key={mfs}
+                    type="button"
+                    onClick={() => setMfsGateway(mfs)}
+                    className={`rounded-xl border px-5 py-2 text-sm font-bold transition ${
+                      mfsGateway === mfs ? 'border-brand-600 bg-brand-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-500 hover:border-brand-300'
+                    }`}
+                  >
+                    {mfs}
+                  </button>
+                ))}
+              </div>
+
+              <div className="space-y-2 text-left">
+                <label className={labelClass}>Electronic Transaction ID (TxnID)</label>
+                <input
+                  type="text"
+                  required
+                  value={txnId}
+                  onChange={(e) => setTxnId(e.target.value.toUpperCase())}
+                  placeholder="e.g. BLX8903KLA"
+                  className={`${inputClass} text-center font-mono font-semibold uppercase tracking-widest`}
+                />
+              </div>
+
+              <button type="submit" disabled={submitting} className={`${btnPrimary} w-full py-3.5`}>
+                {submitting ? 'Verifying gateway...' : 'Verify transaction & unlock receipt'}
+              </button>
+            </form>
+          )}
+
+          {/* STEP 3 — printable receipt */}
+          {step === 3 && (
+            <div className="space-y-6">
+              <div className="flex flex-col items-center gap-4 text-center">
+                <span className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg">
+                  <IconCheckCircle className="h-8 w-8" />
+                </span>
                 <div>
-                  <label className={labelClass}>Target Class Target</label>
-                  <select name="targetClass" value={formData.targetClass} onChange={handleFormChange} className={`${inputClass} cursor-pointer font-bold`}>
-                    <option value="Grade 10-A">Grade 10-A</option>
-                    <option value="Grade 10-B">Grade 10-B</option>
-                    <option value="Grade 11-A">Grade 11-A</option>
-                  </select>
+                  <h2 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Admission Fee Verified</h2>
+                  <p className="mt-1 font-mono text-xs font-semibold uppercase tracking-widest text-slate-500">
+                    Application ID: #{appId.slice(-8).toUpperCase()}
+                  </p>
                 </div>
               </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div>
-                  <label className={labelClass}>Date of Birth (DOB)</label>
-                  <input type="date" required name="dateOfBirth" value={formData.dateOfBirth} onChange={handleFormChange} className={inputClass} />
-                </div>
-                <div>
-                  <label className={labelClass}>Birth Certificate Number</label>
-                  <input type="text" required name="birthCertificateNo" value={formData.birthCertificateNo} onChange={handleFormChange} placeholder="17-Digit Digital Token String" className={`${inputClass} font-mono font-bold`} />
-                </div>
-                <div>
-                  <label className={labelClass}>Email for Communications</label>
-                  <input type="email" required name="emailAddress" value={formData.emailAddress} onChange={handleFormChange} placeholder="contact@domain.com" className={inputClass} />
-                </div>
-              </div>
-            </div>
 
-            {/* Subsection 2: Parents logs matrix fields columns */}
-            <div className="space-y-3">
-              <h3 className="border-b pb-1 text-xs font-black uppercase tracking-wide text-brand-600">👪 Parents Profile Matrix</h3>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div>
-                  <label className={labelClass}>Father's Name (English)</label>
-                  <input type="text" required name="fatherNameEn" value={formData.fatherNameEn} onChange={handleFormChange} className={inputClass} />
-                </div>
-                <div>
-                  <label className={labelClass}>পিতার নাম (বাংলায়)</label>
-                  <input type="text" required name="fatherNameBn" value={formData.fatherNameBn} onChange={handleFormChange} className={inputClass} />
-                </div>
-                <div>
-                  <label className={labelClass}>Father's NID Number (Optional)</label>
-                  <input type="text" name="fatherNid" value={formData.fatherNid} onChange={handleFormChange} placeholder="Smart Card or National ID No" className={`${inputClass} font-mono`} />
-                </div>
+              <div className="mx-auto max-w-md rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6">
+                <p className="text-center text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Official Payment Receipt</p>
+                <dl className="mt-4 divide-y divide-slate-200 text-sm">
+                  <div className="flex justify-between py-2">
+                    <dt className="text-slate-500">Gateway</dt>
+                    <dd className="font-semibold text-slate-800">{mfsGateway}</dd>
+                  </div>
+                  <div className="flex justify-between py-2">
+                    <dt className="text-slate-500">Transaction ID</dt>
+                    <dd className="font-mono font-semibold text-slate-800">{txnId}</dd>
+                  </div>
+                  <div className="flex justify-between py-2">
+                    <dt className="text-slate-500">Amount Paid</dt>
+                    <dd className="font-display font-semibold text-brand-700">{`\u09F3${fee.collected}.00`}</dd>
+                  </div>
+                  <div className="flex justify-between py-2">
+                    <dt className="text-slate-500">Verified At</dt>
+                    <dd className="font-semibold text-slate-800">{fee.verified}</dd>
+                  </div>
+                </dl>
+                <p className="mt-4 text-center text-[10px] text-slate-400">
+                  Generated by Scholaris · Keep this slip for office records
+                </p>
               </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div>
-                  <label className={labelClass}>Mother's Name (English)</label>
-                  <input type="text" required name="motherNameEn" value={formData.motherNameEn} onChange={handleFormChange} className={inputClass} />
-                </div>
-                <div>
-                  <label className={labelClass}>মাতার নাম (বাংলায়)</label>
-                  <input type="text" required name="motherNameBn" value={formData.motherNameBn} onChange={handleFormChange} className={inputClass} />
-                </div>
-                <div>
-                  <label className={labelClass}>Mother's NID Number (Optional)</label>
-                  <input type="text" name="motherNid" value={formData.motherNid} onChange={handleFormChange} placeholder="Smart Card or National ID No" className={`${inputClass} font-mono`} />
-                </div>
-              </div>
-              <div>
-                <label className={labelClass}>Primary Parent Phone Number (🔒 Stamped for Target SMS Alert logs)</label>
-                <input type="tel" required name="parentPhone" value={formData.parentPhone} onChange={handleFormChange} placeholder="017XXXXXXXX" className={`${inputClass} font-mono font-bold`} />
-              </div>
-            </div>
 
-            {/* Subsection 3: Guardian backups references indicators */}
-            <div className="space-y-3">
-              <h3 className="border-b pb-1 text-xs font-black uppercase tracking-wide text-brand-600">🛡️ Emergency Legal Guardian Backup</h3>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div>
-                  <label className={labelClass}>Guardian Name (English)</label>
-                  <input type="text" name="guardianNameEn" value={formData.guardianNameEn} onChange={handleFormChange} className={inputClass} />
-                </div>
-                <div>
-                  <label className={labelClass}>অভিভাবকের নাম (বাংলায়)</label>
-                  <input type="text" name="guardianNameBn" value={formData.guardianNameBn} onChange={handleFormChange} className={inputClass} />
-                </div>
-                <div>
-                  <label className={labelClass}>Guardian Active Contact Phone</label>
-                  <input type="tel" name="guardianPhone" value={formData.guardianPhone} onChange={handleFormChange} placeholder="018XXXXXXXX" className={`${inputClass} font-mono`} />
-                </div>
-              </div>
-            </div>
-
-            <button type="submit" disabled={submitting} className={`${btnPrimary} w-full py-3 uppercase tracking-wider`}>
-              {submitting ? 'Encrypting Payload Logs...' : 'Submit Bio-Profile Details & Proceed to Fee Payment'}
-            </button>
-          </form>
-        )}
-
-        {/* STEP 2: DIGITAL INTERACTIVE WALLETS FEES CHECKOUT PORTAL OVERLAY CONTAINER */}
-        {step === 2 && (
-          <form onSubmit={handleVerifyFeePayment} className="mx-auto max-w-md animate-fade-in space-y-6 text-center">
-            <div className="space-y-2">
-              <span className="rounded-lg border border-amber-100 bg-amber-50 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-700">Secure Fee Checkout</span>
-              <h3 className="text-lg font-black text-slate-900">Admission Form Fee Settle Pass</h3>
-              <div className="text-3xl font-black text-brand-600">৳{payableFee}.00 BDT</div>
-              <p className="text-xs text-slate-500">Please select a mobile banking platform, send ৳{payableFee} to our merchant wallet, and supply the return TxnID tracking handle string below.</p>
-            </div>
-
-            <div className="flex justify-center gap-2">
-              {['bKash', 'Nagad', 'Rocket'].map(mfs => (
-                <button key={mfs} type="button" onClick={() => setMfsGateway(mfs)} className={`cursor-pointer rounded-xl border px-4 py-2 text-xs font-black transition-all ${mfsGateway === mfs ? 'bg-slate-900 font-extrabold text-white shadow-sm' : 'bg-white text-slate-500'}`}>
-                  {mfs}
+              <div className="flex justify-center gap-3 print:hidden">
+                <button type="button" onClick={() => window.print()} className={`${btnPrimary}`}>
+                  <IconPrinter className="h-4 w-4" /> Print admission slip
                 </button>
-              ))}
+                <Link to="/" className={btnSecondary}>
+                  <IconBack className="h-4 w-4" /> Return home
+                </Link>
+              </div>
             </div>
-
-            <div className="space-y-2 text-left">
-              <label className={labelClass}>Input 8-10 Digit Electronic Transaction ID (TxnID)</label>
-              <input type="text" required value={txnId} onChange={(e) => setTxnId(e.target.value.toUpperCase())} placeholder="e.g. BLX8903KLA" className={`${inputClass} text-center font-mono text-sm font-black uppercase tracking-widest`} />
-            </div>
-
-            <button type="submit" disabled={submitting} className={`${btnPrimary} w-full bg-emerald-600 py-3 uppercase tracking-wider hover:bg-emerald-700`}>
-              {submitting ? 'Verifying Gateway Nodes...' : 'Verify Transaction & Unlock Receipt'}
-            </button>
-          </form>
-        )}
-
-        {/* STEP 3: CONFIRMATION SLIP & PRINT VIEW */}
-        {step === 3 && (
-          <div className="animate-fade-in space-y-6 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500 text-2xl font-bold text-white shadow-sm">✓</div>
-            <div className="space-y-1">
-              <h3 className="text-lg font-black text-slate-900">Admission Fee Handshake Completed!</h3>
-              <p className="font-mono text-xs text-slate-500">APPLICATION ID: #{appId.slice(-8).toUpperCase()}</p>
-            </div>
-            <p className="mx-auto max-w-md text-xs text-slate-600">Your admission application and verification fee slip have been successfully logged to the server database. Print or save this official receipt for future tracking.</p>
-            <div className="flex justify-center gap-3 print:hidden">
-              <button onClick={() => window.print()} className="cursor-pointer rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-slate-800">
-                🖨️ Print Itemized Admission Slip
-              </button>
-              <button onClick={() => navigate('/')} className="cursor-pointer rounded-xl bg-slate-100 px-5 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-200">
-                Return to Home
-              </button>
-            </div>
-          </div>
-        )}
-
+          )}
+        </div>
       </div>
     </div>
   );

@@ -26,28 +26,6 @@ const TeacherSchema = new mongoose.Schema({
     type: String,
     default: 'None', // e.g., "Grade 10-A"
     trim: true
-  },
-  // 🟢 NEW FIELDS FOR FUTURE SCALE:
-  teacherPhone: {
-    type: String,
-    default: ''
-  },
-  subjectExpertise: {
-    type: [String], // Array of strings e.g., ["Physics", "Chemistry"]
-    default: []
-  },
-  monthlySalary: {
-    type: Number,
-    default: 0
-  },
-  employmentStatus: {
-    type: String,
-    enum: ['Active', 'On Leave', 'Suspended'],
-    default: 'Active'
-  },
-  joiningDate: {
-    type: Date,
-    default: Date.now
   }
 }, { timestamps: true });
 

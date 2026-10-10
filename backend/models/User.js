@@ -30,6 +30,15 @@ const UserSchema = new mongoose.Schema({
   profileImage: {
     type: String,
     default: "" // Local default fallback handled on frontend assets folder
+  },
+  twoFactorEnabled: {
+    type: Boolean,
+    default: false
+  },
+  twoFactorSecret: {
+    type: String,
+    default: "",
+    select: false // Never returned to the client
   }
 }, { timestamps: true });
 
@@ -42,7 +51,7 @@ UserSchema.pre('save', async function () {
 
   // 2. Hash the password safely using try/catch
   try {
-    const salt = await bcrypt.genSalt(10);
+    const salt = await bcrypt.genSalt(12);
     this.password = await bcrypt.hash(this.password, salt);
   } catch (error) {
     throw new Error(error); // Automatically forwards database errors to Express
@@ -54,5 +63,15 @@ UserSchema.pre('save', async function () {
 UserSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
+
+// Defense-in-depth: never let a serialized user leak the password hash or the
+// TOTP secret, even if a future route forgets its explicit projection.
+UserSchema.set('toJSON', {
+  transform: (_doc, ret) => {
+    delete ret.password;
+    delete ret.twoFactorSecret;
+    return ret;
+  },
+});
 
 module.exports = mongoose.model('User', UserSchema);

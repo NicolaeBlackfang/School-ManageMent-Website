@@ -5,7 +5,11 @@ const multer = require('multer');
 const nodemailer = require('nodemailer');
 const cloudinary = require('../config/cloudinary');
 const { protect, authorizeRoles } = require('../middleware/auth');
+const { validate, schemas } = require('../middleware/validate');
 const { SchoolInfo, Application } = require('../models/PublicModels');
+const { verifyPayment } = require('../services/payment');
+
+const DEFAULT_ADMISSION_FEE = 500;
 
 const storage = multer.memoryStorage();
 
@@ -49,12 +53,13 @@ router.get('/info', async (req, res) => {
 
 // @desc    Update base school website text parameters (Admin Only)
 // @route   POST /api/public/info/update
-router.post('/info/update', protect, authorizeRoles('admin'), upload.fields([{ name: 'logo' }, { name: 'banner' }]), async (req, res) => {
-  const { welcomeTitle, aboutText } = req.body;
+router.post('/info/update', protect, authorizeRoles('admin'), upload.fields([{ name: 'logo' }, { name: 'banner' }]), validate(schemas.infoUpdate), async (req, res) => {
+  const { welcomeTitle, aboutText, admissionFeeAmount } = req.body;
   try {
     let info = await SchoolInfo.findOne() || new SchoolInfo();
     info.welcomeTitle = welcomeTitle || info.welcomeTitle;
     info.aboutText = aboutText || info.aboutText;
+    if (admissionFeeAmount !== undefined) info.admissionFeeAmount = admissionFeeAmount;
 
     if (req.files?.logo) info.schoolLogo = await streamUpload(req.files.logo.buffer, 'school_branding');
     if (req.files?.banner) info.bannerImage = await streamUpload(req.files.banner.buffer, 'school_branding');
@@ -68,7 +73,7 @@ router.post('/info/update', protect, authorizeRoles('admin'), upload.fields([{ n
 
 // @desc    Append a new Founding Member Profile Card
 // @route   POST /api/public/founder/add
-router.post('/founder/add', protect, authorizeRoles('admin'), upload.single('founderPhoto'), async (req, res) => {
+router.post('/founder/add', protect, authorizeRoles('admin'), upload.single('founderPhoto'), validate(schemas.founderAdd), async (req, res) => {
   const { name, designation, quote } = req.body;
   try {
     let info = await SchoolInfo.findOne() || await SchoolInfo.create({});
@@ -84,7 +89,7 @@ router.post('/founder/add', protect, authorizeRoles('admin'), upload.single('fou
 
 // @desc    Wipe/Delete a specific Founder Profile array index entry
 // @route   DELETE /api/public/founder/:founderId
-router.delete('/founder/:founderId', protect, authorizeRoles('admin'), async (req, res) => {
+router.delete('/founder/:founderId', protect, authorizeRoles('admin'), validate(schemas.founderIdParam, 'params'), async (req, res) => {
   try {
     let info = await SchoolInfo.findOne();
     if (!info) return res.status(404).json({ success: false, message: 'Config document missing.' });
@@ -97,9 +102,12 @@ router.delete('/founder/:founderId', protect, authorizeRoles('admin'), async (re
 });
 
 // @route   POST /api/public/apply
-router.post('/apply', async (req, res) => {
+router.post('/apply', validate(schemas.admissionApply), async (req, res) => {
   try {
-    const config = await SchoolInfo.findOne().lean() || { admissionFeeAmount: 500 };
+    const config = await SchoolInfo.findOne().lean();
+    // Server-set fee: use the configured amount, fall back to the default when
+    // the field is absent (legacy documents). The client never supplies this.
+    const fee = Math.max(0, Number(config?.admissionFeeAmount ?? DEFAULT_ADMISSION_FEE) || 0);
 
     // ⚠️ SECURITY: Explicit allow-list instead of spreading req.body.
     // This prevents mass assignment of server-controlled fields such as
@@ -121,7 +129,7 @@ router.post('/apply', async (req, res) => {
       guardianNameEn: req.body.guardianNameEn,
       guardianNameBn: req.body.guardianNameBn,
       guardianPhone: req.body.guardianPhone,
-      payableAmount: Number(config.admissionFeeAmount) || 500,
+      payableAmount: fee,
       paidAmount: 0,
       paymentStatus: 'Unpaid',
       applicationStatus: 'Pending'
@@ -138,42 +146,51 @@ router.post('/apply', async (req, res) => {
       success: true,
       message: 'Application recorded. Proceeding to payment token verification.',
       applicationId: newApp._id,
-      payableAmount: config.admissionFeeAmount
+      payableAmount: fee
     });
   } catch (error) { res.status(400).json({ success: false, message: 'Application could not be recorded.' }); }
 });
 
-// ⚠️ SECURITY NOTE: This is a mock MFS confirmation. In production this MUST be
-// replaced by server-to-server verification of the transaction with the payment
-// gateway (bKash/Nagad etc.) rather than trusting client-supplied values.
+// Admission fee payment. The amount is determined entirely server-side by the
+// payment adapter (never from the request body) and the flow is idempotent.
 // @route   POST /api/public/pay-admission/:appId
-router.post('/pay-admission/:appId', async (req, res) => {
+router.post('/pay-admission/:appId', validate(schemas.appIdParam, 'params'), validate(schemas.payAdmission), async (req, res) => {
   const { paymentMethod, txnId } = req.body;
 
   try {
-    // 1. Validate transaction reference format/length
-    if (typeof txnId !== 'string' || txnId.trim().length < 4 || txnId.trim().length > 64) {
-      return res.status(400).json({ success: false, message: 'A valid transaction ID is required.' });
-    }
-
     const app = await Application.findById(req.params.appId);
     if (!app) return res.status(404).json({ success: false, message: 'Application voucher absent.' });
 
-    // 2. Idempotency: never allow an already-paid voucher to be re-marked / re-priced
+    // Idempotency: never allow an already-paid voucher to be re-marked / re-priced
     if (app.paymentStatus === 'Paid') {
       return res.status(409).json({ success: false, message: 'This application has already been paid.' });
     }
 
-    // 3. ⚠️ Amount is determined by the SERVER, never taken from the request body.
-    //    The client-submitted `amount` is ignored entirely, so it cannot be forged.
+    // Server-to-server verification (or the explicitly-labelled sandbox adapter).
+    // Throws a 503 when no usable provider is configured.
+    const result = await verifyPayment({ application: app, txnId, method: paymentMethod });
+
     app.paymentStatus = 'Paid';
-    app.paidAmount = Number(app.payableAmount) || 500;
-    app.paymentTxnId = txnId.trim();
-    app.paymentMethod = typeof paymentMethod === 'string' ? paymentMethod.slice(0, 32) : 'bKash';
+    app.paidAmount = Number(result.amount) || Number(app.payableAmount) || 0;
+    app.paymentTxnId = result.reference;
+    app.paymentMethod = result.method;
+    app.paymentProvider = result.provider;
+    app.paymentVerifiedAt = new Date();
     await app.save();
 
-    res.json({ success: true, message: '💸 Fee payment received! Your application status is now under review on Atlas.' });
-  } catch (error) { res.status(500).json({ success: false, message: 'Payment could not be processed.' }); }
+    res.json({
+      success: true,
+      message: result.sandbox
+        ? 'Fee payment recorded (sandbox mode). Your application is now under review.'
+        : 'Fee payment received. Your application is now under review.',
+      sandbox: !!result.sandbox,
+    });
+  } catch (error) {
+    if (error.status === 503) {
+      return res.status(503).json({ success: false, message: 'Payment is temporarily unavailable.' });
+    }
+    res.status(500).json({ success: false, message: 'Payment could not be processed.' });
+  }
 });
 
 // @route   GET /api/public/applications (Admin Only)
@@ -186,7 +203,7 @@ router.get('/applications', protect, authorizeRoles('admin'), async (req, res) =
 
 // 🟢 UPGRADED EVALUATION ENDPOINT WITH STATUS VERIFICATIONS
 // @route   PATCH /api/public/application/:appId
-router.patch('/application/:appId', protect, authorizeRoles('admin'), async (req, res) => {
+router.patch('/application/:appId', protect, authorizeRoles('admin'), validate(schemas.appIdParam, 'params'), validate(schemas.applicationPatch), async (req, res) => {
   const { status, paymentStatus } = req.body;
   try {
     const appRecord = await Application.findById(req.params.appId);
@@ -200,7 +217,7 @@ router.patch('/application/:appId', protect, authorizeRoles('admin'), async (req
     // Fire Nodemailer email alert pipeline if configured
     if (process.env.SMTP_USER && process.env.SMTP_PASS) {
       const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST || '://gmail.com', port: 587, secure: false,
+        host: process.env.SMTP_HOST || 'smtp.gmail.com', port: 587, secure: false,
         auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
       });
       await transporter.sendMail({

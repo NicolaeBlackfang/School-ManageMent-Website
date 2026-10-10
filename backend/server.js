@@ -2,11 +2,15 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const cookieParser = require('cookie-parser');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
 const path = require('path');
 const connectDB = require('./config/db');
+const { csrfInit, csrfProtect } = require('./middleware/csrf');
+const sanitize = require('./middleware/sanitize');
 const attendanceRoutes = require('./routes/attendanceRoutes');
+const { isSandbox } = require('./services/payment');
 const authRoutes = require('./routes/authRoutes');
 const noticeRoutes = require('./routes/noticeRoutes');
 const teacherRoutes = require('./routes/teacherRoutes');
@@ -16,10 +20,57 @@ const gradebookRoutes = require('./routes/gradebookRoutes');
 // 1. Load environment variables first
 dotenv.config({ path: path.join(__dirname, '.env') });
 
+// Fail fast on missing critical secrets rather than silently signing tokens with
+// an undefined/weak key.
+if (!process.env.JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET is not set. Refusing to start.');
+  process.exit(1);
+}
+// Reject weak signing keys: a short secret is brute-forceable and undermines
+// every session/2FA token. Fatal in production, loud warning in local dev.
+if (process.env.JWT_SECRET.length < 32) {
+  const msg = 'JWT_SECRET is shorter than 32 characters. Use a long random value.';
+  if (process.env.NODE_ENV === 'production') {
+    console.error(`FATAL: ${msg} Refusing to start.`);
+    process.exit(1);
+  }
+  console.warn(`WARNING: ${msg}`);
+}
+if (process.env.NODE_ENV === 'production' && isSandbox) {
+  console.warn('WARNING: PAYMENT_PROVIDER is "sandbox" in production; admission payments will be rejected until a real provider is configured.');
+}
+
 const app = express();
+app.disable('x-powered-by'); // Hide the Express fingerprint
+
+// Behind a single reverse proxy (production). Enables accurate client IPs for
+// rate limiting and lets HttpOnly+Secure cookies work over HTTPS.
+if (process.env.TRUST_PROXY === 'true') app.set('trust proxy', 1);
 
 // 2. Security middleware
-app.use(helmet()); // Sets sensible security headers (CSP, X-Frame-Options, etc.)
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      scriptSrcAttr: ["'none'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "blob:", "https://res.cloudinary.com", "https://*.cloudinary.com"],
+      fontSrc: ["'self'", "data:"],
+      connectSrc: ["'self'", "https://res.cloudinary.com", "ws://localhost:5173", "wss://localhost:5173"],
+      objectSrc: ["'none'"],
+      frameSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+  referrerPolicy: { policy: 'same-origin' },
+  hsts: process.env.NODE_ENV === 'production'
+    ? { maxAge: 15552000, includeSubDomains: true, preload: true }
+    : false,
+}));
 
 // Restrict CORS to a configurable allow-list of trusted front-end origins
 const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173,http://localhost:3000,http://localhost:4173')
@@ -33,10 +84,12 @@ app.use(cors({
     if (!origin || allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
-    return callback(new Error('Not allowed by CORS'));
+    const err = new Error('Not allowed by CORS');
+    err.status = 403;
+    return callback(err);
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-password'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-password', 'X-CSRF-Token'],
   credentials: true,
 }));
 
@@ -44,6 +97,14 @@ app.use(cors({
 // 2mb accommodates a 1MB base64-encoded profile image (~1.37x inflation).
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ limit: '2mb', extended: true }));
+app.use(cookieParser());
+
+// 🛡️ NoSQL injection scrubber — strips Mongo operator keys from all payloads.
+app.use(sanitize);
+
+// 🛡️ CSRF double-submit cookie: issued on every response, verified on mutations.
+app.use(csrfInit);
+app.use('/api', csrfProtect);
 
 // 🛡️ Rate limiting: generous global cap, strict cap on authentication endpoints
 const globalLimiter = rateLimit({
@@ -62,6 +123,19 @@ const authLimiter = rateLimit({
 app.use('/api', globalLimiter);
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/2fa/verify', authLimiter);
+
+// Tighter cap on unauthenticated, write-heavy public admission endpoints
+// (application submission and payment) to blunt spam / abuse.
+const publicWriteLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many requests. Please try again later.' },
+});
+app.use('/api/public/apply', publicWriteLimiter);
+app.use('/api/public/pay-admission', publicWriteLimiter);
 
 
 // 3. Setup Mongoose Connection Listeners FIRST
@@ -87,6 +161,17 @@ app.use('/api/grades', gradebookRoutes);
 app.use('/api/config', require('./routes/configRoutes'));
 app.use('/api/student', require('./routes/studentRoutes'));
 app.use('/api/public', require('./routes/publicRoutes'));
+
+// Serve the built SPA in production so the entire app shares one origin (and
+// inherits the CSP/security headers above). /api/ requests still hit the JSON API.
+if (process.env.NODE_ENV === 'production') {
+  const dist = path.join(__dirname, '..', 'frontend', 'dist');
+  app.use(express.static(dist));
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api/')) return next();
+    res.sendFile(path.join(dist, 'index.html'), (err) => err && next());
+  });
+}
 
 
 

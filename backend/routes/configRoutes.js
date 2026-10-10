@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const SchoolConfig = require('../models/SchoolConfig');
 const { protect, authorizeRoles } = require('../middleware/auth');
+const { validate, schemas } = require('../middleware/validate');
 
 // @desc    Get global school configurations
 // @route   GET /api/config
@@ -18,7 +19,7 @@ router.get('/', async (req, res) => {
 
 // @desc    Update global dropdown arrays
 // @route   POST /api/config/update
-router.post('/update', protect, authorizeRoles('admin'), async (req, res) => {
+router.post('/update', protect, authorizeRoles('admin'), validate(schemas.configUpdate), async (req, res) => {
   const { classes, subjects, examTerms } = req.body;
   try {
     let config = await SchoolConfig.findOne() || new SchoolConfig();
@@ -33,7 +34,7 @@ router.post('/update', protect, authorizeRoles('admin'), async (req, res) => {
 });
 
 // 🟢 ADDED: Toggle a specific day of the week as an official school off-day repeating column
-router.post('/toggle-offday', protect, authorizeRoles('admin'), async (req, res) => {
+router.post('/toggle-offday', protect, authorizeRoles('admin'), validate(schemas.toggleOffDay), async (req, res) => {
   const { dayIndex } = req.body;
   if (dayIndex === undefined || dayIndex < 0 || dayIndex > 6) {
     return res.status(400).json({ success: false, message: 'Invalid calendar day reference index.' });
@@ -54,7 +55,7 @@ router.post('/toggle-offday', protect, authorizeRoles('admin'), async (req, res)
 });
 
 // 🟢 ADDED: Toggle a specific single unique date string as a holiday vacation block
-router.post('/toggle-holiday', protect, authorizeRoles('admin'), async (req, res) => {
+router.post('/toggle-holiday', protect, authorizeRoles('admin'), validate(schemas.toggleHoliday), async (req, res) => {
   const { dateStr } = req.body;
   if (!dateStr) return res.status(400).json({ success: false, message: 'Date string parameters required.' });
   try {

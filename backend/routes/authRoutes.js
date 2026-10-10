@@ -1,22 +1,39 @@
 // routes/authRoutes.js
 const express = require('express');
 const router = express.Router();
-const mongoose = require('mongoose'); // 🟢 Imported mongoose natively for object conversions
-const { registerUser, loginUser } = require('../controllers/authController');
-const { protect, authorizeRoles } = require('../middleware/auth');
+const mongoose = require('mongoose');
+const {
+  registerUser,
+  loginUser,
+  getMe,
+  logoutUser,
+  setupTwoFactor,
+  verifyTwoFactor,
+  disableTwoFactor,
+} = require('../controllers/authController');
+const { protect, softAuth, authorizeRoles } = require('../middleware/auth');
+const { validate, schemas } = require('../middleware/validate');
 const User = require('../models/User');
 
-// Imported separate role-specific structural models
 const Student = require('../models/Student');
 const Teacher = require('../models/Teacher');
 const Notice = require('../models/Notice');
 
 // Public Gateways
-router.post('/register', registerUser);
-router.post('/login', loginUser);
+router.post('/register', validate(schemas.register), registerUser);
+router.post('/login', validate(schemas.login), loginUser);
+
+// Session bootstrap + lifecycle
+router.get('/me', protect, getMe);
+router.post('/logout', protect, logoutUser);
+
+// 2FA (TOTP)
+router.post('/2fa/setup', protect, setupTwoFactor);
+router.post('/2fa/verify', softAuth, validate(schemas.twoFactorVerify), verifyTwoFactor);
+router.post('/2fa/disable', validate(schemas.twoFactorVerify), protect, disableTwoFactor);
 
 // Private Gateway - Handles standard profile updates
-router.put('/profile', protect, async (req, res) => {
+router.put('/profile', protect, validate(schemas.profile), async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
 
@@ -28,17 +45,21 @@ router.put('/profile', protect, async (req, res) => {
       const updatedUser = await user.save();
 
       res.json({
-        _id: updatedUser._id,
-        name: updatedUser.name,
-        email: updatedUser.email,
-        role: updatedUser.role,
-        profileImage: updatedUser.profileImage
+        success: true,
+        user: {
+          _id: updatedUser._id,
+          name: updatedUser.name,
+          email: updatedUser.email,
+          role: updatedUser.role,
+          profileImage: updatedUser.profileImage,
+          twoFactorEnabled: Boolean(updatedUser.twoFactorEnabled),
+        },
       });
     } else {
-      res.status(404).json({ message: 'User context reference dropped.' });
+      res.status(404).json({ success: false, message: 'User context reference dropped.' });
     }
   } catch (error) {
-    res.status(500).json({ message: 'Request failed.' });
+    res.status(500).json({ success: false, message: 'Request failed.' });
   }
 });
 
@@ -47,21 +68,14 @@ router.put('/profile', protect, async (req, res) => {
 // @access  Private (Admins only)
 router.get('/dashboard-stats', protect, authorizeRoles('admin'), async (req, res) => {
   try {
-    // ⚡ Execute parallel collection counts across MongoDB Atlas indexes for instantaneous results
     const [studentCount, teacherCount, noticeCount] = await Promise.all([
       User.countDocuments({ role: 'student' }),
       User.countDocuments({ role: 'teacher' }),
-      Notice ? Notice.countDocuments({}) : Promise.resolve(0) // Safe fallback checking for notice collection
+      Notice ? Notice.countDocuments({}) : Promise.resolve(0),
     ]);
 
-    // Automating system pending tasks logically: 
-    // Tasks can include checking how many students haven't been assigned class roll positions yet!
-    const Student = require('../models/Student');
     const pendingTasksCount = await Student.countDocuments({
-      $or: [
-        { gradeClass: 'Unassigned' },
-        { rollNumber: { $exists: false } }
-      ]
+      $or: [{ gradeClass: 'Unassigned' }, { rollNumber: { $exists: false } }],
     });
 
     res.json({
@@ -70,112 +84,92 @@ router.get('/dashboard-stats', protect, authorizeRoles('admin'), async (req, res
         registeredStudents: studentCount,
         activeTeachers: teacherCount,
         noticesPublished: noticeCount,
-        pendingTasks: pendingTasksCount
-      }
+        pendingTasks: pendingTasksCount,
+      },
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Request failed.' });
   }
 });
 
-// routes/authRoutes.js
-
-// @desc    Get all registered users matching them with their separate sub-collection fields cleanly
-// @route   GET /api/auth/users
-// @access  Private (Admins only)
 router.get('/users', protect, authorizeRoles('admin'), async (req, res) => {
   try {
-    // 🟢 NEW: Capture the query filters passed down from your React frontend params
     const { role, search } = req.query;
 
-    // Build an adaptive filter match stage box array
     let matchQuery = {};
 
     if (role) {
-      matchQuery.role = role; // Enforces strict segregation ('student' vs 'teacher')
+      matchQuery.role = role;
     }
 
     if (search) {
-      // ⚠️ SECURITY: escape user input before interpolating into a RegExp to
-      // prevent regex injection / ReDoS. Coerce to string first.
       const safeSearch = String(search).slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       matchQuery.$or = [
         { name: { $regex: safeSearch, $options: 'i' } },
-        { email: { $regex: safeSearch, $options: 'i' } }
+        { email: { $regex: safeSearch, $options: 'i' } },
       ];
     }
 
     const users = await User.aggregate([
-      // 1. 🟢 FIXED STAGE: Enforce strict role isolation right at the entry point of the pipeline
       { $match: matchQuery },
-
-      // 2. Pull users but leave out the password hashes
       { $project: { password: 0 } },
-
-      // 3. Look into 'teachers' collection if the user is a teacher
       {
         $lookup: {
           from: 'teachers',
           localField: '_id',
           foreignField: 'userId',
-          as: 'teacherProfile'
-        }
+          as: 'teacherProfile',
+        },
       },
-
-      // 4. Look into 'students' collection if the user is a student
       {
         $lookup: {
           from: 'students',
           localField: '_id',
           foreignField: 'userId',
-          as: 'studentProfile'
-        }
+          as: 'studentProfile',
+        },
       },
-
-      // 5. Correctly map and extract rollNumber and classTeacherOf fields natively
       {
         $addFields: {
           customId: {
             $cond: {
               if: { $eq: ['$role', 'teacher'] },
               then: { $arrayElemAt: ['$teacherProfile.teacherId', 0] },
-              else: ""
-            }
+              else: "",
+            },
           },
           rollNumber: {
             $cond: {
               if: { $eq: ['$role', 'student'] },
               then: { $arrayElemAt: ['$studentProfile.rollNumber', 0] },
-              else: null
-            }
+              else: null,
+            },
           },
           classTeacherOf: {
             $cond: {
               if: { $eq: ['$role', 'teacher'] },
               then: { $arrayElemAt: ['$teacherProfile.classTeacherOf', 0] },
-              else: 'None'
-            }
+              else: 'None',
+            },
           },
           extraField1: {
             $cond: {
               if: { $eq: ['$role', 'teacher'] },
               then: { $arrayElemAt: ['$teacherProfile.department', 0] },
-              else: { $arrayElemAt: ['$studentProfile.gradeClass', 0] }
-            }
+              else: { $arrayElemAt: ['$studentProfile.gradeClass', 0] },
+            },
           },
           extraField2: {
             $cond: {
               if: { $eq: ['$role', 'teacher'] },
               then: { $arrayElemAt: ['$teacherProfile.qualification', 0] },
-              else: { $arrayElemAt: ['$studentProfile.parentContact', 0] }
-            }
-          }
-        }
+              else: { $arrayElemAt: ['$studentProfile.parentContact', 0] },
+            },
+          },
+        },
       },
-
-      // 6. Clean up temporary lookups and sort by class and roll chronologically
-      { $project: { teacherProfile: 0, studentProfile: 0 } },
-      { $sort: { extraField1: 1, rollNumber: 1 } }
+      { $project: { password: 0, teacherProfile: 0, studentProfile: 0 } },
+      { $sort: { extraField1: 1, rollNumber: 1 } },
     ]);
 
     res.json({ success: true, data: users });
@@ -184,39 +178,27 @@ router.get('/users', protect, authorizeRoles('admin'), async (req, res) => {
   }
 });
 
-
-
 // @desc    Creation framework for new students or teachers (Admins can create both, Teachers can create students only)
 // @route   POST /api/auth/users/create
 // @access  Private (Admins & Teachers only)
-router.post('/users/create', protect, authorizeRoles('admin', 'teacher'), async (req, res) => {
+router.post('/users/create', protect, authorizeRoles('admin', 'teacher'), validate(schemas.createUser), async (req, res) => {
   const { name, email, password, role, customId, extraField1, extraField2 } = req.body;
 
   try {
-    // 1. Enforce teacher-specific restriction: Teachers can only create students
     if (req.user.role === 'teacher' && role !== 'student') {
       return res.status(403).json({ success: false, message: 'Unauthorized: Teachers are only permitted to register student accounts.' });
     }
 
-    // 2. Validate the role against the allowed enum (never trust arbitrary input)
     if (!['admin', 'teacher', 'student', 'parent'].includes(role)) {
       return res.status(400).json({ success: false, message: 'Invalid role configuration.' });
     }
 
-    // 3. Basic input validation
-    if (typeof name !== 'string' || !name.trim() || typeof email !== 'string' || !email.trim() || typeof password !== 'string' || password.length < 8) {
-      return res.status(400).json({ success: false, message: 'A name, email and password of at least 8 characters are required.' });
-    }
-
-    // 4. Core security validation checks
     const normalizedEmail = email.toLowerCase().trim();
     const userExists = await User.findOne({ email: normalizedEmail });
     if (userExists) {
       return res.status(400).json({ success: false, message: 'An account with this email address already exists.' });
     }
 
-    // 5. ⚠️ SECURITY: A teacher may only create students inside their OWN class.
-    //    Resolve the class scope BEFORE creating any account so we never leave orphans.
     let assignedClass = extraField1 || 'Unassigned';
     if (req.user.role === 'teacher') {
       const teacherProfile = await Teacher.findOne({ userId: req.user.id }).lean();
@@ -226,11 +208,9 @@ router.post('/users/create', protect, authorizeRoles('admin', 'teacher'), async 
       assignedClass = teacherProfile.classTeacherOf;
     }
 
-    // 6. Generate the primary authentication document inside the core collection
     const user = await User.create({ name: name.trim(), email: normalizedEmail, password, role });
 
     if (role === 'student') {
-      // 🟢 FIXED: Safely intercept and force-cast the roll number parameter properties
       const absoluteRollNumber = req.body.rollNumber ? Number(req.body.rollNumber) : 1;
 
       await Student.create({
@@ -239,11 +219,8 @@ router.post('/users/create', protect, authorizeRoles('admin', 'teacher'), async 
         gradeClass: assignedClass,
         parentContact: extraField2 || '',
         guardianName: req.body.guardianName || '',
-        rollNumber: absoluteRollNumber // 🟢 EXPLICITLY PASS THE NUMBER HERE
+        rollNumber: absoluteRollNumber,
       });
-
-
-
     } else if (role === 'teacher') {
       const absoluteTeacherId = (customId && customId.trim() !== '') ? customId : `TCH-${Date.now().toString().slice(-4)}`;
 
@@ -252,10 +229,9 @@ router.post('/users/create', protect, authorizeRoles('admin', 'teacher'), async 
         teacherId: absoluteTeacherId,
         department: extraField1 || 'General Education',
         qualification: extraField2 || '',
-        classTeacherOf: req.body.classTeacherOf || 'None' // 🟢 Captures class assignment text from admin form
+        classTeacherOf: req.body.classTeacherOf || 'None',
       });
     }
-
 
     res.status(201).json({ success: true, message: `Successfully instantiated new ${role} account portal entry!` });
   } catch (error) {
@@ -263,14 +239,10 @@ router.post('/users/create', protect, authorizeRoles('admin', 'teacher'), async 
   }
 });
 
-
-// 🟢 NEW: Targeted single user data aggregation resolver
-// @route   GET /api/auth/users/:id
-// @access  Private (Admins only)
-router.get('/users/:id', protect, authorizeRoles('admin'), async (req, res) => {
+// Targeted single user data aggregation resolver
+router.get('/users/:id', protect, authorizeRoles('admin'), validate(schemas.idParam, 'params'), async (req, res) => {
   try {
     const user = await User.aggregate([
-      // 1. Immediately pinpoint the user document via index references
       { $match: { _id: new mongoose.Types.ObjectId(req.params.id) } },
       { $project: { password: 0 } },
       {
@@ -278,16 +250,16 @@ router.get('/users/:id', protect, authorizeRoles('admin'), async (req, res) => {
           from: 'teachers',
           localField: '_id',
           foreignField: 'userId',
-          as: 'teacherProfile'
-        }
+          as: 'teacherProfile',
+        },
       },
       {
         $lookup: {
           from: 'students',
           localField: '_id',
           foreignField: 'userId',
-          as: 'studentProfile'
-        }
+          as: 'studentProfile',
+        },
       },
       {
         $addFields: {
@@ -299,35 +271,35 @@ router.get('/users/:id', protect, authorizeRoles('admin'), async (req, res) => {
                 $cond: {
                   if: { $eq: ['$role', 'student'] },
                   then: { $arrayElemAt: ['$studentProfile.studentId', 0] },
-                  else: ""
-                }
-              }
-            }
+                  else: "",
+                },
+              },
+            },
           },
           extraField1: {
             $cond: {
               if: { $eq: ['$role', 'teacher'] },
               then: { $arrayElemAt: ['$teacherProfile.department', 0] },
-              else: { $arrayElemAt: ['$studentProfile.gradeClass', 0] }
-            }
+              else: { $arrayElemAt: ['$studentProfile.gradeClass', 0] },
+            },
           },
           extraField2: {
             $cond: {
               if: { $eq: ['$role', 'teacher'] },
               then: { $arrayElemAt: ['$teacherProfile.qualification', 0] },
-              else: { $arrayElemAt: ['$studentProfile.parentContact', 0] }
-            }
-          }
-        }
+              else: { $arrayElemAt: ['$studentProfile.parentContact', 0] },
+            },
+          },
+          twoFactorEnabled: '$twoFactorEnabled',
+        },
       },
-      { $project: { teacherProfile: 0, studentProfile: 0 } }
+      { $project: { password: 0, twoFactorSecret: 0, teacherProfile: 0, studentProfile: 0 } },
     ]);
 
     if (!user || user.length === 0) {
       return res.status(404).json({ success: false, message: 'Target profile reference dropped.' });
     }
 
-    // Return the individual profile dictionary straight out of the lookup array payload
     res.json({ success: true, data: user[0] });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Request failed.' });
@@ -335,12 +307,8 @@ router.get('/users/:id', protect, authorizeRoles('admin'), async (req, res) => {
 });
 
 // Private Gateway - Modify user privileges
-router.patch('/users/:id/role', protect, authorizeRoles('admin'), async (req, res) => {
+router.patch('/users/:id/role', protect, authorizeRoles('admin'), validate(schemas.idParam, 'params'), validate(schemas.changeRole), async (req, res) => {
   const { role } = req.body;
-
-  if (!['admin', 'teacher', 'student', 'parent'].includes(role)) {
-    return res.status(400).json({ success: false, message: 'Invalid role configuration allocation.' });
-  }
 
   try {
     const user = await User.findById(req.params.id);
@@ -351,7 +319,10 @@ router.patch('/users/:id/role', protect, authorizeRoles('admin'), async (req, re
     user.role = role;
     await user.save();
 
-    res.json({ success: true, message: `User role successfully shifted to ${role}.`, data: user });
+    // Never serialize the password hash back to the client.
+    const safeUser = { _id: user._id, name: user.name, email: user.email, role: user.role };
+
+    res.json({ success: true, message: `User role successfully shifted to ${role}.`, data: safeUser });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Request failed.' });
   }
@@ -360,20 +331,17 @@ router.patch('/users/:id/role', protect, authorizeRoles('admin'), async (req, re
 // @desc    Allow Admin to delete a teacher from the entire system
 // @route   DELETE /api/auth/users/teacher/:id
 // @access  Private (Admins only)
-router.delete('/users/teacher/:id', protect, authorizeRoles('admin'), async (req, res) => {
+router.delete('/users/teacher/:id', protect, authorizeRoles('admin'), validate(schemas.idParam, 'params'), validate(schemas.deleteGuard), async (req, res) => {
   try {
     const { password } = req.body;
     const adminUser = await User.findById(req.user.id).select('+password');
 
-    // Match password candidate natively against bcrypt hash strings
-    const isMatch = await adminUser.matchPassword(password);
+    const isMatch = password && (await adminUser.matchPassword(password));
     if (!isMatch) {
       return res.status(401).json({ success: false, message: 'Security check failed: Password authentication mismatch.' });
     }
-    // 1. Remove profile out of the separate teacher sub-collection
-    await Teacher.deleteOne({ userId: req.params.id });
 
-    // 2. Clear credentials from base user collection
+    await Teacher.deleteOne({ userId: req.params.id });
     await User.deleteOne({ _id: req.params.id });
 
     res.json({ success: true, message: 'Teacher profile cleanly purged from all cloud layers.' });
@@ -382,9 +350,8 @@ router.delete('/users/teacher/:id', protect, authorizeRoles('admin'), async (req
   }
 });
 
-
 // Private Gateway - Admin override to delegate credentials to separate collections
-router.put('/users/:id/credentials', protect, authorizeRoles('admin'), async (req, res) => {
+router.put('/users/:id/credentials', protect, authorizeRoles('admin'), validate(schemas.idParam, 'params'), validate(schemas.updateCredentials), async (req, res) => {
   const { customId, password, extraField1, extraField2 } = req.body;
 
   try {
@@ -405,7 +372,7 @@ router.put('/users/:id/credentials', protect, authorizeRoles('admin'), async (re
           userId: user._id,
           studentId: customId,
           gradeClass: extraField1 || 'Unassigned',
-          parentContact: extraField2 || ''
+          parentContact: extraField2 || '',
         },
         { upsert: true, new: true }
       );
@@ -417,12 +384,11 @@ router.put('/users/:id/credentials', protect, authorizeRoles('admin'), async (re
           teacherId: customId,
           department: extraField1 || 'General Education',
           qualification: extraField2 || '',
-          classTeacherOf: req.body.classTeacherOf || 'None' // 🟢 Captures class adjustments
+          classTeacherOf: req.body.classTeacherOf || 'None',
         },
         { upsert: true, new: true }
       );
     }
-
 
     res.json({ success: true, message: 'Credentials safely isolated across role-specific collections!' });
   } catch (error) {

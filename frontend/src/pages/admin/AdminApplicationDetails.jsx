@@ -1,7 +1,27 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { Spinner, Badge, btnPrimary, btnDanger } from '../../components/ui.jsx';
+import api from '../../core/api.js';
+import {
+  PageContainer,
+  PageHeader,
+  Card,
+  Badge,
+  Spinner,
+  MessageBanner,
+  btnPrimary,
+  btnDanger,
+} from '../../components/ui.jsx';
+import {
+  IconBack,
+  IconUser,
+  IconUsers,
+  IconBell,
+  IconMoney,
+  IconClipboard,
+  IconCheckCircle,
+  IconX,
+  IconAlert,
+} from '../../components/icons.jsx';
 
 const AdminApplicationDetails = () => {
   const { id } = useParams();
@@ -10,149 +30,181 @@ const AdminApplicationDetails = () => {
   const [loading, setLoading] = useState(true);
   const [statusMsg, setStatusMsg] = useState('');
 
-  useEffect(() => {
-    fetchApplicationDetails();
-  }, [id]);
-
   const fetchApplicationDetails = async () => {
-    const storedUser = JSON.parse(localStorage.getItem('schoolUser'));
-    if (!storedUser || !storedUser.token) return;
     try {
-      const config = { headers: { Authorization: `Bearer ${storedUser.token}` } };
-      // Fetches all applications and extracts the specific match
-      const { data } = await axios.get('http://localhost:5000/api/public/applications', config);
+      const { data } = await api.get('/public/applications');
       if (data.success) {
-        const match = data.data.find(a => a._id === id);
-        setApp(match || null);
+        const found = (data.data || []).find((a) => a._id === id);
+        if (found) setApp(found);
       }
-    } catch (err) {
-      console.error(err);
-    } finally { setLoading(false); }
-  };
-
-  const handleAction = async (decision) => {
-    setStatusMsg('');
-    const storedUser = JSON.parse(localStorage.getItem('schoolUser'));
-    try {
-      const config = { headers: { Authorization: `Bearer ${storedUser.token}` } };
-      const { data } = await axios.patch(`http://localhost:5000/api/public/application/${id}`, { status: decision }, config);
-      if (data.success) {
-        setStatusMsg(`✔ Record safely updated to ${decision}. Alerts dispatched.`);
-        fetchApplicationDetails();
-      }
-    } catch (e) {
-      setStatusMsg('Failed to process state change.');
+    } catch {
+      setStatusMsg('Failed to query application registry.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (loading) return <div className="flex min-h-screen items-center justify-center bg-slate-50"><Spinner className="h-8 w-8" /></div>;
-  if (!app) return <div className="mx-auto mt-12 max-w-xl rounded-2xl border border-slate-200/70 bg-white p-8 text-center font-bold text-slate-400">⚠️ Application document not found inside server registries.</div>;
+  useEffect(() => {
+    fetchApplicationDetails();
+  }, []);
+
+  const handleAction = async (decision) => {
+    setStatusMsg('');
+    try {
+      const { data } = await api.patch(`/public/application/${id}`, { status: decision });
+      if (data.success) {
+        setStatusMsg(`Record safely updated to ${decision}. Alert dispatches routed.`);
+        fetchApplicationDetails();
+      }
+    } catch {
+      setStatusMsg('Failed to process application state change.');
+    }
+  };
+
+  if (loading) {
+    return (
+      <PageContainer>
+        <div className="flex min-h-[50vh] items-center justify-center"><Spinner className="h-10 w-10" /></div>
+      </PageContainer>
+    );
+  }
+
+  if (!app) {
+    return (
+      <PageContainer className="max-w-3xl">
+        <Card className="p-8 text-center">
+          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+            <IconAlert className="h-5 w-5" />
+          </div>
+          <p className="mt-3 font-bold text-slate-700">Application document not found in server registries.</p>
+          <button onClick={() => navigate('/a/approvals')} className="mt-4 inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50">
+            <IconBack className="h-4 w-4" /> Back to approvals
+          </button>
+        </Card>
+      </PageContainer>
+    );
+  }
 
   const statusTone = app.applicationStatus === 'Approved' ? 'emerald'
     : app.applicationStatus === 'Rejected' ? 'rose' : 'amber';
 
   return (
-    <div className="mx-auto max-w-4xl space-y-4 p-4 font-sans text-xs text-slate-700 sm:p-6">
+    <PageContainer className="max-w-4xl">
+      <div className="animate-fade-up space-y-6">
+        <PageHeader
+          title={`Applicant dossier: ${app.studentNameEn}`}
+          subtitle={`Voucher reference #${app._id.slice(-8).toUpperCase()}`}
+          badge={<Badge tone={statusTone}>{app.applicationStatus || 'Pending'}</Badge>}
+          actions={
+            <button onClick={() => navigate('/a/approvals')} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50">
+              <IconBack className="h-4 w-4" /> Approvals queue
+            </button>
+          }
+        />
 
-      {/* Header Controls */}
-      <div className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-white p-4 shadow-xs">
-        <div>
-          <span className="rounded border border-sky-100 bg-sky-50 px-2 py-0.5 font-mono text-[10px] font-black uppercase text-sky-600">Voucher REF: #{app._id.slice(-8).toUpperCase()}</span>
-          <h1 className="mt-1 text-base font-black text-slate-900">Applicant Dossier: {app.studentNameEn}</h1>
+        <MessageBanner message={statusMsg ? { text: statusMsg, type: 'info' } : null} />
+
+        <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-3">
+          <div className="space-y-5 md:col-span-2">
+            <Card className="p-5">
+              <h3 className="flex items-center gap-2 border-b border-slate-100 pb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                <IconUser className="h-4 w-4" /> Student identity (EN / BN)
+              </h3>
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field label="Name (English)" value={app.studentNameEn} />
+                <Field label="Name (Bangla)" value={app.studentNameBn || '—'} />
+                <Field label="Date of birth" value={app.dateOfBirth ? app.dateOfBirth.split('T')[0] : '—'} mono />
+                <Field label="Birth certificate no" value={app.birthCertificateNo || '—'} mono />
+              </div>
+            </Card>
+
+            <Card className="p-5">
+              <h3 className="flex items-center gap-2 border-b border-slate-100 pb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                <IconUsers className="h-4 w-4" /> Parents & guardians registry
+              </h3>
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field label="Father's name (English)" value={app.fatherNameEn} />
+                <Field label="Father's name (Bangla)" value={app.fatherNameBn || '—'} />
+                <Field label="Father's NID" value={app.fatherNid || '—'} mono />
+                <Field label="Mother's name (English)" value={app.motherNameEn} />
+                <Field label="Mother's name (Bangla)" value={app.motherNameBn || '—'} />
+                <Field label="Mother's NID" value={app.motherNid || '—'} mono />
+                <Field label="Primary email contact" value={app.emailAddress} mono />
+              </div>
+            </Card>
+
+            <Card className="p-5">
+              <h3 className="flex items-center gap-2 border-b border-slate-100 pb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                <IconBell className="h-4 w-4" /> Emergency SMS communications
+              </h3>
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field label="Guardian name (EN / BN)" value={`${app.guardianNameEn || '—'} (${app.guardianNameBn || '—'})`} />
+                <Field label="SMS mobile phone number" value={app.parentPhone || app.guardianPhone} mono accent />
+              </div>
+            </Card>
+          </div>
+
+          <div className="space-y-5">
+            <Card className="p-5">
+              <h3 className="flex items-center gap-2 border-b border-slate-100 pb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                <IconMoney className="h-4 w-4" /> MFS settle audit
+              </h3>
+              <div className="mt-4 space-y-3 rounded-xl border border-slate-100 bg-slate-50 p-3 text-xs">
+                <Row label="Class intake" value={app.targetClass} mono />
+                <Row label="Payment gateway" value={app.paymentMethod || 'bKash'} />
+                <Row label="Paid fees" value={`৳${app.paidAmount || '0'} BDT`} mono />
+                <div className="flex flex-col gap-0.5 border-t border-slate-200 pt-2">
+                  <span className="text-[10px] font-bold uppercase text-slate-400">Transaction reference ID</span>
+                  <span className="font-mono text-xs font-bold tracking-tight text-slate-900">{app.paymentTxnId || 'MOCK-TX-CODE'}</span>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-5 text-center">
+              <h3 className="flex items-center gap-2 border-b border-slate-100 pb-2 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                <IconClipboard className="h-4 w-4" /> Intake assessment
+              </h3>
+              <div className="py-4">
+                <span className="block text-xs font-bold uppercase tracking-wide text-slate-400">Current verification status</span>
+                <span className="mt-2 inline-block">
+                  <Badge tone={statusTone}>{app.applicationStatus || 'Pending evaluation'}</Badge>
+                </span>
+              </div>
+
+              {app.applicationStatus === 'Pending' || !app.applicationStatus ? (
+                <div className="flex flex-col gap-2 border-t border-slate-100 pt-3">
+                  <button onClick={() => handleAction('Approved')} className={`${btnPrimary} w-full`}>
+                    <IconCheckCircle className="h-4 w-4" /> Approve & dispatch
+                  </button>
+                  <button onClick={() => handleAction('Rejected')} className={`${btnDanger} w-full text-xs`}>
+                    <IconX className="h-4 w-4" /> Decline entry request
+                  </button>
+                </div>
+              ) : (
+                <p className="border-t border-slate-100 pt-3 text-[11px] font-medium italic text-slate-400">
+                  This record has already been processed and locked.
+                </p>
+              )}
+            </Card>
+          </div>
         </div>
-        <button onClick={() => navigate('/admin/approvals')} className="cursor-pointer rounded-xl border bg-slate-50 px-3 py-1.5 font-bold text-slate-600 transition-colors hover:bg-slate-100">← Approvals Queue</button>
       </div>
-
-      {statusMsg && <div className="animate-fade-in rounded-xl border border-sky-100 bg-sky-50 p-2.5 font-bold text-sky-800">{statusMsg}</div>}
-
-      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-3">
-
-        {/* LEFT COLUMN: ITEMIZED SUMMARY SHEET DETAILS */}
-        <div className="space-y-4 rounded-2xl border border-slate-200/70 bg-white p-5 shadow-xs md:col-span-2">
-
-          {/* Section 1: Student Identity */}
-          <div className="space-y-2">
-            <h3 className="border-b pb-1 text-xs font-black uppercase tracking-wider text-slate-900">👤 Student Identity (EN / BN)</h3>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div><span className="block font-bold text-slate-400">Name (English)</span><span className="text-sm font-bold text-slate-800">{app.studentNameEn}</span></div>
-              <div><span className="block font-bold text-slate-400">Name (Bangla)</span><span className="text-sm font-bold text-slate-800">{app.studentNameBn || '—'}</span></div>
-              <div><span className="block font-bold text-slate-400">Date of Birth</span><span className="font-mono font-bold text-slate-800">{app.dateOfBirth ? app.dateOfBirth.split('T')[0] : '—'}</span></div>
-              <div><span className="block font-bold text-slate-400">Birth Certificate No</span><span className="font-mono font-bold text-slate-800">{app.birthCertificateNo || '—'}</span></div>
-            </div>
-          </div>
-
-          {/* Section 2: Parents Framework */}
-          <div className="space-y-2 pt-2">
-            <h3 className="border-b pb-1 text-xs font-black uppercase tracking-wider text-slate-900">👥 Parents & Guardians Registry</h3>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div><span className="block font-bold text-slate-400">Father's Name (English)</span><span className="font-bold text-slate-800">{app.fatherNameEn}</span></div>
-              <div><span className="block font-bold text-slate-400">Father's Name (Bangla)</span><span className="font-medium text-slate-800">{app.fatherNameBn || '—'}</span></div>
-              <div><span className="block font-bold text-slate-400">Father's NID</span><span className="font-mono text-slate-800">{app.fatherNid || '—'}</span></div>
-              <div><span className="block font-bold text-slate-400">Mother's Name (English)</span><span className="font-bold text-slate-800">{app.motherNameEn}</span></div>
-              <div><span className="block font-bold text-slate-400">Mother's Name (Bangla)</span><span className="font-medium text-slate-800">{app.motherNameBn || '—'}</span></div>
-              <div><span className="block font-bold text-slate-400">Mother's NID</span><span className="font-mono text-slate-800">{app.motherNid || '—'}</span></div>
-              <div><span className="block font-bold text-slate-400">Primary Email Contact</span><span className="font-mono font-bold text-slate-800">{app.emailAddress}</span></div>
-            </div>
-          </div>
-
-          {/* Section 3: Emergency Contacts */}
-          <div className="space-y-2 pt-2">
-            <h3 className="border-b pb-1 text-xs font-black uppercase tracking-wider text-slate-900">💬 Emergency SMS Communications</h3>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div><span className="block font-bold text-slate-400">Guardian Name (EN/BN)</span><span className="font-bold text-slate-800">{app.guardianNameEn || '—'} ({app.guardianNameBn || '—'})</span></div>
-              <div><span className="block font-bold text-slate-400">SMS Mobile Phone Number</span><span className="text-sm font-mono font-black text-brand-600">{app.parentPhone || app.guardianPhone}</span></div>
-            </div>
-          </div>
-        </div>
-
-        {/* RIGHT COLUMN: ACTION & BILLING ADMISSION CHECKS */}
-        <div className="space-y-4">
-          <div className="space-y-3 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-xs">
-            <h3 className="border-b pb-1 text-xs font-black uppercase tracking-wider text-slate-900">💰 MFS Settle Audit</h3>
-            <div className="space-y-2 rounded-xl border bg-slate-50 p-3 font-medium">
-              <div className="flex justify-between">
-                <span className="text-slate-400">Class Intake:</span>
-                <span className="font-mono font-bold text-slate-900">{app.targetClass}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Payment Gateway:</span>
-                <span className="font-mono text-[10px] font-black uppercase text-pink-600">{app.paymentMethod || 'bKash'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Paid Fees:</span>
-                <span className="font-mono font-black text-slate-900">৳{app.paidAmount || '0'} BDT</span>
-              </div>
-              <div className="flex flex-col border-t pt-1.5">
-                <span className="text-[10px] font-bold uppercase text-slate-400">Transaction Reference ID</span>
-                <span className="mt-0.5 font-mono text-xs font-black tracking-tight text-slate-900">{app.paymentTxnId || 'MOCK-TX-CODE'}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Authorization Decision Pad Box */}
-          <div className="space-y-3 rounded-2xl border border-slate-200/70 bg-white p-4 text-center shadow-xs">
-            <h3 className="border-b pb-1 text-left text-xs font-black uppercase tracking-wider text-slate-900">⚖ Intake Assessment</h3>
-            <div className="py-2">
-              <span className="block font-bold text-slate-400">Current Verification Status</span>
-              <span className="mt-1 inline-block">
-                <Badge tone={statusTone} pulse={statusTone === 'amber'}>{app.applicationStatus || 'Pending Evaluation'}</Badge>
-              </span>
-            </div>
-
-            {app.applicationStatus === 'Pending' || !app.applicationStatus ? (
-              <div className="flex flex-col gap-2 border-t pt-2">
-                <button onClick={() => handleAction('Approved')} className={`${btnPrimary} w-full cursor-pointer py-2 shadow-xs`}>✔ Approve & Dispatch Notifications</button>
-                <button onClick={() => handleAction('Rejected')} className={`${btnDanger} w-full cursor-pointer py-2 shadow-xs`}>❌ Decline Entry Request</button>
-              </div>
-            ) : (
-              <p className="border-t pt-2 text-[11px] font-medium italic text-slate-400">This record configuration loop has already been processed and locked.</p>
-            )}
-          </div>
-        </div>
-
-      </div>
-    </div>
+    </PageContainer>
   );
 };
+
+const Field = ({ label, value, mono, accent }) => (
+  <div>
+    <span className="block text-[11px] font-bold uppercase tracking-wide text-slate-400">{label}</span>
+    <span className={`text-sm font-semibold ${mono ? 'font-mono' : ''} ${accent ? 'text-brand-600' : 'text-slate-800'}`}>{value || '—'}</span>
+  </div>
+);
+
+const Row = ({ label, value, mono }) => (
+  <div className="flex items-center justify-between gap-3">
+    <span className="text-slate-400">{label}</span>
+    <span className={`font-bold text-slate-900 ${mono ? 'font-mono' : ''}`}>{value}</span>
+  </div>
+);
 
 export default AdminApplicationDetails;

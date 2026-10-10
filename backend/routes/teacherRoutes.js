@@ -1,8 +1,8 @@
 // backend/routes/teacherRoutes.js
 const express = require('express');
 const router = express.Router();
-const mongoose = require('mongoose');
 const { protect, authorizeRoles } = require('../middleware/auth');
+const { validate, schemas } = require('../middleware/validate');
 const Teacher = require('../models/Teacher');
 const Student = require('../models/Student');
 const User = require('../models/User');
@@ -65,7 +65,7 @@ router.get('/my-class', protect, authorizeRoles('teacher'), async (req, res) => 
 // @desc    Submit or overwrite daily attendance for the teacher's class
 // @route   POST /api/teacher/attendance
 // @access  Private (Teachers only)
-router.post('/attendance', protect, authorizeRoles('teacher'), async (req, res) => {
+router.post('/attendance', protect, authorizeRoles('teacher'), validate(schemas.teacherSubmitAttendance), async (req, res) => {
     const { date, records } = req.body;
 
     try {
@@ -95,7 +95,7 @@ router.post('/attendance', protect, authorizeRoles('teacher'), async (req, res) 
 
 // @desc    Fetch submission heatmaps and session statuses for a specific month
 // @route   GET /api/teacher/attendance-calendar-heatmap/:classId
-router.get('/attendance-calendar-heatmap/:classId', protect, authorizeRoles('teacher', 'admin'), async (req, res) => {
+router.get('/attendance-calendar-heatmap/:classId', protect, authorizeRoles('teacher', 'admin'), validate(schemas.classParam, 'params'), validate(schemas.heatmapQuery, 'query'), async (req, res) => {
     const { classId } = req.params;
     const { year, month } = req.query;
 
@@ -151,7 +151,7 @@ router.get('/attendance-calendar-heatmap/:classId', protect, authorizeRoles('tea
 
 // @desc    Get existing attendance data records for a specific date
 // @route   GET /api/teacher/attendance-by-date/:classId
-router.get('/attendance-by-date/:classId', protect, authorizeRoles('teacher', 'admin'), async (req, res) => {
+router.get('/attendance-by-date/:classId', protect, authorizeRoles('teacher', 'admin'), validate(schemas.classParam, 'params'), validate(schemas.byDateQuery, 'query'), async (req, res) => {
     const { classId } = req.params;
     const { date } = req.query; // Expects "YYYY-MM-DD" string format
 
@@ -185,7 +185,7 @@ router.get('/attendance-by-date/:classId', protect, authorizeRoles('teacher', 'a
 // @desc    Get comprehensive yearly attendance percentage analytics for a class
 // @route   GET /api/teacher/attendance-analytics/:classId
 // @access  Private (Teachers & Admins only)
-router.get('/attendance-analytics/:classId', protect, authorizeRoles('teacher', 'admin'), async (req, res) => {
+router.get('/attendance-analytics/:classId', protect, authorizeRoles('teacher', 'admin'), validate(schemas.classParam, 'params'), async (req, res) => {
     try {
         // ⚠️ Authorization: verify the caller owns this class (admins bypass)
         if (!(await canAccessClass(req.user, req.params.classId))) {
@@ -295,7 +295,7 @@ router.get('/attendance-analytics/:classId', protect, authorizeRoles('teacher', 
 
 // @desc    Allow Class Teachers to update student records with manual roll checks
 // @route   PUT /api/teacher/users/edit/:id
-router.put('/users/edit/:id', protect, authorizeRoles('teacher'), async (req, res) => {
+router.put('/users/edit/:id', protect, authorizeRoles('teacher'), validate(schemas.idParam, 'params'), validate(schemas.teacherEditStudent), async (req, res) => {
     const { gradeClass, parentContact, name, email, rollNumber } = req.body;
 
     try {
@@ -346,7 +346,7 @@ router.put('/users/edit/:id', protect, authorizeRoles('teacher'), async (req, re
 // @desc    Allow Class Teachers to delete a student out of their class roster with password confirmation
 // @route   DELETE /api/teacher/users/delete/:id
 // @access  Private (Teachers only)
-router.delete('/users/delete/:id', protect, authorizeRoles('teacher'), async (req, res) => {
+router.delete('/users/delete/:id', protect, authorizeRoles('teacher'), validate(schemas.idParam, 'params'), validate(schemas.deleteGuard), async (req, res) => {
     const { password } = req.body; // 🟢 Extract the challenge verification password from the body request
 
     if (!password) {

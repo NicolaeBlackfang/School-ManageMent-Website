@@ -1,117 +1,104 @@
-// src/pages/shared/noticeboard.jsx
+// src/pages/shared/NoticeBoard.jsx
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { Spinner, EmptyState } from '../../components/ui.jsx';
+import { Link } from 'react-router-dom';
+import api from '../../core/api.js';
+import { useAuth } from '../../context/AuthContext.jsx';
+import { roleHome } from '../../core/nav.js';
+import { PageContainer, Card, Spinner, EmptyState, MessageBanner, Badge } from '../../components/ui.jsx';
+import { IconBell, IconBack, IconFile } from '../../components/icons.jsx';
 
 const SharedNoticeBoard = () => {
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const [notices, setNotices] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [userRole, setUserRole] = useState('student');
+  const [msg, setMsg] = useState({ text: '', type: '' });
+
+  const userRole = user?.role || 'student';
 
   useEffect(() => {
-    const fetchBulletinFeed = async () => {
-      const storedUser = JSON.parse(localStorage.getItem('schoolUser'));
-      if (!storedUser || !storedUser.token) {
-        setError('Session expired. Please log in again.');
-        setLoading(false);
-        return;
-      }
-
-      setUserRole(storedUser.role || 'student');
-
+    let cancelled = false;
+    (async () => {
       try {
-        const config = { headers: { Authorization: `Bearer ${storedUser.token}` } };
-        // Backend filters visibility rules securely (Students see 'all'/'student', Teachers see everything)
-        const { data } = await axios.get('http://localhost:5000/api/notices', config);
-        setNotices(data.data);
-      } catch (err) {
-        setError('Failed to safely synchronize with institutional circular data logs.');
+        const { data } = await api.get('/notices');
+        if (!cancelled) setNotices(data.data);
+      } catch {
+        if (!cancelled) setMsg({ text: 'Failed to synchronize with institutional circular data.', type: 'error' });
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
-    };
-    fetchBulletinFeed();
+    })();
+    return () => { cancelled = true; };
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <Spinner className="h-10 w-10" />
-      </div>
-    );
-  }
+  const audienceTone = (audience) =>
+    audience === 'teacher' ? 'violet' : audience === 'student' ? 'emerald' : 'sky';
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-8">
+    <PageContainer className="max-w-4xl">
+      <div className="animate-fade-up space-y-6">
+        <Link
+          to={roleHome(userRole)}
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
+        >
+          <IconBack className="h-4 w-4" /> Return to dashboard
+        </Link>
 
-      {/* Dynamic Back Navigation Pointers depending on current active user role context session */}
-      <button
-        onClick={() => navigate(userRole === 'teacher' ? '/teacher/dashboard' : '/student/dashboard')}
-        className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-500 shadow-xs transition-colors hover:text-slate-900"
-      >
-        ← Return to Dashboard Terminal
-      </button>
-
-      <div className="space-y-4">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900">📢 Official School Bulletin Board</h1>
-          <p className="mt-0.5 text-xs text-slate-400">Global announcements, news updates, and role-specific circular briefings.</p>
+        <div className="flex items-center gap-3">
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-700 text-white shadow-lg shadow-brand-700/20">
+            <IconBell className="h-6 w-6" />
+          </span>
+          <div>
+            <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+              Official School Bulletin Board
+            </h1>
+            <p className="text-sm text-slate-500">Global announcements and role-specific circular briefings.</p>
+          </div>
         </div>
 
-        {error && <div className="rounded-xl bg-rose-50 p-4 text-sm font-semibold text-rose-700">⚠️ {error}</div>}
+        <MessageBanner message={msg} />
 
-        {notices.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-16"><Spinner /></div>
+        ) : notices.length === 0 ? (
           <EmptyState
             title="No circulars in your scope"
-            message="No circular notices have been published for your visibility scope parameters yet."
+            message="No notices have been published for your visibility parameters yet."
           />
         ) : (
           <div className="space-y-4">
             {notices.map((notice) => (
-              <div key={notice._id} className="relative space-y-3 overflow-hidden rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm transition-all hover:border-brand-200 hover:shadow-md">
-
-                {/* Visual audience filter badge indicator visible strictly for teachers auditing feeds */}
-                {userRole === 'teacher' && (
-                  <span className={`absolute right-0 top-0 border-b border-l px-2 py-0.5 text-[8px] font-black uppercase tracking-wider rounded-bl-lg ${
-                    notice.targetAudience === 'teacher' ? 'border-violet-100 bg-violet-50 text-violet-700' :
-                      notice.targetAudience === 'student' ? 'border-emerald-100 bg-emerald-50 text-emerald-700' :
-                        'border-sky-100 bg-sky-50 text-sky-700'
-                  }`}>
-                    Audience: {notice.targetAudience}
-                  </span>
-                )}
-
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h3 className="text-lg font-bold tracking-tight text-slate-900">{notice.title}</h3>
-                    <span className="mt-0.5 block font-mono text-[10px] text-slate-400">Published On: {new Date(notice.createdAt).toLocaleDateString('en-BD', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+              <Card key={notice._id} className="p-6 transition hover-lift">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="text-lg font-semibold tracking-tight text-slate-900">{notice.title}</h3>
+                    <span className="mt-1 block text-[11px] text-slate-400">
+                      Published {new Date(notice.createdAt).toLocaleDateString('en-BD', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
                   </div>
+                  {userRole === 'teacher' && notice.targetAudience && (
+                    <Badge tone={audienceTone(notice.targetAudience)}>Audience: {notice.targetAudience}</Badge>
+                  )}
                 </div>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-600">{notice.content}</p>
+                <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">{notice.content}</p>
 
                 {notice.attachmentUrl && (
-                  <div className="pt-2">
-                    {/* Bypasses localhost entirely, routing students and teachers to the absolute cloud bucket target */}
+                  <div className="mt-4">
                     <a
                       href={notice.attachmentUrl}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex items-center gap-1.5 rounded-lg border border-brand-100 bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700 transition-colors hover:bg-brand-100"
                     >
-                      📄 View Attached Official PDF File
+                      <IconFile className="h-4 w-4" /> View attached PDF
                     </a>
                   </div>
                 )}
-
-              </div>
+              </Card>
             ))}
           </div>
         )}
       </div>
-    </div>
+    </PageContainer>
   );
 };
 

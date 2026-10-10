@@ -15,6 +15,9 @@ const SchoolInfoSchema = new mongoose.Schema({
   aboutText: { type: String, default: "Providing top-tier educational frameworks and global curriculum standard structures." },
   schoolLogo: { type: String, default: "" },
   bannerImage: { type: String, default: "" },
+  // Server-controlled admission fee (single source of truth for the public
+  // admission form). Never trust a client-supplied amount.
+  admissionFeeAmount: { type: Number, default: 500, min: 0, max: 1000000 },
   founders: [FounderSchema]
 }, { timestamps: true });
 
@@ -47,6 +50,8 @@ const ApplicationSchema = new mongoose.Schema({
   paymentStatus: { type: String, default: 'Unpaid' },
   paymentMethod: { type: String },
   paymentTxnId: { type: String },
+  paymentProvider: { type: String },
+  paymentVerifiedAt: { type: Date },
 
   // Oversight Workflow Status
   applicationStatus: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Pending' }

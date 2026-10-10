@@ -1,53 +1,67 @@
 // src/pages/auth/Register.jsx
-import { useState, useContext } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { AuthContext } from '../../context/AuthContext';
-import { IconGraduation, IconShield } from '../../components/icons.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
+import Wordmark from '../../components/layout/Wordmark.jsx';
+import { IconShield, IconLock } from '../../components/icons.jsx';
 import { inputClass, labelClass, btnPrimary } from '../../components/ui.jsx';
+import { roleHome } from '../../core/nav.js';
 
 const Register = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Role is now fixed to 'parent' by default
-  const role = 'parent';
-
-  const { register } = useContext(AuthContext);
+  const { register } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
 
-    const result = await register(name, email, password, role);
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters long.');
+      return;
+    }
+    if (password !== confirm) {
+      setError('Passwords do not match.');
+      return;
+    }
+
+    setLoading(true);
+    const result = await register(name, email, password);
+    setLoading(false);
 
     if (result.success) {
-      navigate(`/`);
+      navigate(roleHome(result.user.role), { replace: true });
     } else {
       setError(result.message);
     }
-    setLoading(false);
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-slate-50 px-4 py-12 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-600 to-sky-500 text-white shadow-lg shadow-brand-600/20">
-            <IconGraduation className="h-7 w-7" />
+    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-paper px-4 py-12 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md animate-fade-up">
+        <div className="mb-8 flex flex-col items-center gap-4 text-center lg:hidden">
+          <Wordmark />
+        </div>
+        <div className="text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-700 text-white shadow-lg shadow-brand-700/20">
+            <IconShield className="h-7 w-7" />
           </div>
-          <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">Create a Parent Account</h1>
-          <p className="mt-1 text-sm text-slate-500">Join the school portal in under a minute.</p>
+          <h1 className="font-display mt-4 text-3xl font-semibold tracking-tight text-slate-900">
+            Create a Parent Account
+          </h1>
+          <p className="mt-1.5 text-sm text-slate-500">Join the school portal in under a minute.</p>
         </div>
 
-        <div className="animate-fade-up rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm sm:p-8">
+        <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_1px_2px_rgb(23_20_16/0.05)] sm:p-8">
           {error && (
             <div className="mb-5 flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-              <span>⚠️</span> {error}
+              <IconLock className="h-4 w-4 shrink-0" /> {error}
             </div>
           )}
 
@@ -58,6 +72,7 @@ const Register = () => {
                 id="name"
                 type="text"
                 required
+                autoComplete="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className={inputClass}
@@ -71,6 +86,7 @@ const Register = () => {
                 id="email"
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className={inputClass}
@@ -84,26 +100,37 @@ const Register = () => {
                 id="password"
                 type="password"
                 required
+                autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className={inputClass}
-                placeholder="Min 6 characters"
+                placeholder="At least 8 characters"
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className={`${btnPrimary} w-full py-3`}
-            >
+            <div>
+              <label htmlFor="confirm" className={labelClass}>Confirm Password</label>
+              <input
+                id="confirm"
+                type="password"
+                required
+                autoComplete="new-password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                className={inputClass}
+                placeholder="Repeat your password"
+              />
+            </div>
+
+            <button type="submit" disabled={loading} className={`${btnPrimary} w-full py-3`}>
               {loading ? 'Creating account...' : 'Register'}
             </button>
           </form>
 
           <p className="mt-6 text-center text-sm text-slate-500">
-            Or{' '}
+            Already registered?{' '}
             <Link to="/login" className="font-semibold text-brand-600 transition hover:text-brand-700">
-              sign in to your portal
+              Sign in
             </Link>
           </p>
         </div>

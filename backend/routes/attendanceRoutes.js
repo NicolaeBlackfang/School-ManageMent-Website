@@ -4,6 +4,7 @@ const router = express.Router();
 const Attendance = require('../models/Attendance');
 const Teacher = require('../models/Teacher');
 const { protect, authorizeRoles } = require('../middleware/auth');
+const { validate, schemas } = require('../middleware/validate');
 
 // ⚠️ SECURITY HELPER: Admins may access any class; a teacher only their own class.
 const canAccessClass = async (user, classId) => {
@@ -16,7 +17,7 @@ const canAccessClass = async (user, classId) => {
 // @desc    Submit daily attendance roster
 // @route   POST /api/attendance
 // @access  Private (Teachers & Admins only)
-router.post('/', protect, authorizeRoles('teacher', 'admin'), async (req, res) => {
+router.post('/', protect, authorizeRoles('teacher', 'admin'), validate(schemas.submitAttendance), async (req, res) => {
   const { classId, date, records } = req.body;
 
   try {
@@ -47,7 +48,7 @@ router.post('/', protect, authorizeRoles('teacher', 'admin'), async (req, res) =
 // @desc    Get attendance history for a specific class
 // @route   GET /api/attendance/:classId
 // @access  Private (Admins & the class-owning teacher only)
-router.get('/:classId', protect, authorizeRoles('admin', 'teacher'), async (req, res) => {
+router.get('/:classId', protect, authorizeRoles('admin', 'teacher'), validate(schemas.classParam, 'params'), async (req, res) => {
   try {
     // ⚠️ Authorization: students/parents must use their own scoped endpoints;
     // teachers can only read their assigned class.

@@ -2,7 +2,7 @@
 // Shared presentational building blocks for a consistent design system.
 // These are purely visual — all data logic lives in the page components.
 
-import { IconCheckCircle, IconAlert } from "./icons.jsx";
+import { IconCheckCircle, IconAlert, IconClipboard } from "./icons.jsx";
 
 export const Spinner = ({ className = "h-8 w-8", tone = "brand" }) => (
   <div
@@ -28,7 +28,7 @@ export const PageContainer = ({ children, className = "" }) => (
 );
 
 export const Card = ({ children, className = "" }) => (
-  <div className={`rounded-2xl border border-slate-200/70 bg-white shadow-sm ${className}`}>
+  <div className={`rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_3px_rgb(15_23_42/0.05)] ${className}`}>
     {children}
   </div>
 );
@@ -37,11 +37,12 @@ const BADGE_TONES = {
   slate: "bg-slate-100 text-slate-600 ring-slate-200",
   indigo: "bg-brand-50 text-brand-700 ring-brand-200",
   emerald: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  teal: "bg-teal-50 text-teal-700 ring-teal-200",
   amber: "bg-amber-50 text-amber-700 ring-amber-200",
   rose: "bg-rose-50 text-rose-700 ring-rose-200",
   sky: "bg-sky-50 text-sky-700 ring-sky-200",
   violet: "bg-violet-50 text-violet-700 ring-violet-200",
-  slateDark: "bg-slate-800 text-white ring-slate-700",
+  slateDark: "bg-slate-900 text-white ring-slate-800",
 };
 
 export const Badge = ({ children, tone = "slate", className = "" }) => (
@@ -55,8 +56,9 @@ export const Badge = ({ children, tone = "slate", className = "" }) => (
 );
 
 const STAT_TONES = {
-  indigo: "from-brand-500 to-blue-600",
+  indigo: "from-brand-500 to-brand-700",
   emerald: "from-emerald-500 to-teal-600",
+  teal: "from-teal-500 to-cyan-600",
   amber: "from-amber-400 to-orange-500",
   rose: "from-rose-500 to-pink-600",
   sky: "from-sky-500 to-cyan-600",
@@ -69,7 +71,7 @@ export const StatCard = ({ label, value, sub, icon, tone = "indigo", className =
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
         <p className="truncate text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-        <p className="mt-1.5 truncate text-2xl font-bold tracking-tight text-slate-900">{value}</p>
+        <p className="font-display mt-1.5 truncate text-3xl font-semibold tracking-tight text-slate-900">{value}</p>
         {sub && <p className="mt-1 truncate text-sm text-slate-500">{sub}</p>}
       </div>
       {icon && (
@@ -85,8 +87,8 @@ export const StatCard = ({ label, value, sub, icon, tone = "indigo", className =
 
 export const EmptyState = ({ title = "Nothing here yet", message, children }) => (
   <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 px-6 py-12 text-center">
-    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-xl shadow-sm">
-      {children || "🗒"}
+    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm">
+      {children || <IconClipboard className="h-5 w-5" />}
     </div>
     <p className="mt-1 text-sm font-semibold text-slate-700">{title}</p>
     {message && <p className="max-w-md text-sm text-slate-500">{message}</p>}
@@ -128,7 +130,7 @@ export const PageHeader = ({ title, subtitle, badge, actions, className = "" }) 
   <div className={`flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between ${className}`}>
     <div className="min-w-0">
       <div className="flex flex-wrap items-center gap-2.5">
-        <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{title}</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">{title}</h1>
         {badge}
       </div>
       {subtitle && <p className="mt-1 max-w-2xl text-sm text-slate-500">{subtitle}</p>}

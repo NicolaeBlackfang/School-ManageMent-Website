@@ -1,167 +1,100 @@
-// src/pages/AdminDashboard.jsx
+// src/pages/admin/AdminDashboard.jsx
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
-import { StatCard, Spinner } from '../../components/ui.jsx';
+import api from '../../core/api.js';
+import { useAuth } from '../../context/AuthContext.jsx';
+import { PageContainer, Card, StatCard, Spinner, MessageBanner, Badge } from '../../components/ui.jsx';
+import { IconUsers, IconBell, IconAlert, IconUser, IconChart, IconGraduation } from '../../components/icons.jsx';
 
 const AdminDashboard = () => {
-  const [stats, setStats] = useState({
-    registeredStudents: 0,
-    activeTeachers: 0,
-    noticesPublished: 0,
-    pendingTasks: 0
-  });
+  const { user } = useAuth();
+  const [stats, setStats] = useState({ registeredStudents: 0, activeTeachers: 0, noticesPublished: 0, pendingTasks: 0 });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [msg, setMsg] = useState({ text: '', type: '' });
 
   useEffect(() => {
-    const fetchLiveMetrics = async () => {
-      const storedUser = JSON.parse(localStorage.getItem('schoolUser'));
-      if (!storedUser || !storedUser.token) {
-        setError('Unauthorized context session drop.');
-        setLoading(false);
-        return;
-      }
-
+    let cancelled = false;
+    (async () => {
       try {
-        const config = { headers: { Authorization: `Bearer ${storedUser.token}` } };
-        // Query real-time aggregator count endpoint
-        const { data } = await axios.get('http://localhost:5000/api/auth/dashboard-stats', config);
-        if (data.success) {
-          setStats(data.stats);
-        }
-      } catch (err) {
-        console.error('Failed to parse database indicators stream.');
+        const { data } = await api.get('/auth/dashboard-stats');
+        if (!cancelled && data.success) setStats(data.stats);
+      } catch {
+        if (!cancelled) setMsg({ text: 'Failed to load dashboard statistics.', type: 'error' });
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
-    };
-
-    fetchLiveMetrics();
+    })();
+    return () => { cancelled = true; };
   }, []);
 
-  // Structural cards mapping list for dynamic metrics with color-coded styles
-  const metricsGrid = [
-    { label: 'Total Registered Students', count: stats.registeredStudents, tone: 'indigo', icon: '👨‍🎓' },
-    { label: 'Active Teachers', count: stats.activeTeachers, tone: 'emerald', icon: '👩‍🏫' },
-    { label: 'Active Notices Published', count: stats.noticesPublished, tone: 'amber', icon: '📢' },
-    { label: 'Pending System Tasks', count: stats.pendingTasks, tone: stats.pendingTasks > 0 ? 'rose' : 'slate', icon: '⚠️' }
-  ];
-
   if (loading) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center bg-slate-50">
-        <Spinner className="h-10 w-10" />
-      </div>
-    );
+    return <PageContainer><div className="flex min-h-[40vh] items-center justify-center"><Spinner /></div></PageContainer>;
   }
 
+  const modules = [
+    { icon: <IconBell className="h-5 w-5" />, tint: 'bg-amber-50 text-amber-600', title: 'Broadcast Bulletins', body: 'Announcements, alerts and PDF circulars pushed to parent and student timelines.', to: '/a/notices', cta: 'Open notice board' },
+    { icon: <IconUsers className="h-5 w-5" />, tint: 'bg-sky-50 text-sky-600', title: 'User Control Matrix', body: 'Audit faculty profiles, shift rolls, delete accounts and manage metadata.', to: '/a/users', cta: 'Configure roster' },
+    { icon: <IconChart className="h-5 w-5" />, tint: 'bg-violet-50 text-violet-600', title: 'Website Landing', body: 'Welcome text, logo branding and hero banner gallery served from Cloudinary.', to: '/a/website', cta: 'Open layout manager' },
+    { icon: <IconGraduation className="h-5 w-5" />, tint: 'bg-brand-50 text-brand-600', title: 'Institution Settings', body: 'Class sections and subject structures used across every dropdown matrix.', to: '/a/settings', cta: 'Configure school layout' },
+    { icon: <IconUser className="h-5 w-5" />, tint: 'bg-amber-50 text-amber-600', title: 'Application Approvals', body: 'Review admission forms, authorize passes and browse the approved archive.', to: '/a/approvals', cta: 'Open approval desk' },
+    { icon: <IconUser className="h-5 w-5" />, tint: 'bg-emerald-50 text-emerald-600', title: 'Create User', body: 'Provision new student, teacher or admin accounts with initial credentials.', to: '/a/users/create', cta: 'Create a user' },
+  ];
+
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-slate-50 p-4 sm:p-8">
-      <div className="mx-auto max-w-7xl space-y-8">
-
-        {/* 1. Header Hero Panel */}
-<div className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm sm:flex-row sm:items-center">
+    <PageContainer className="max-w-7xl">
+      <div className="animate-fade-up space-y-6">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-800 via-brand-900 to-slate-950 p-8 text-white sm:p-10">
+          <div className="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-brand-700/40 blur-2xl" />
+          <div className="absolute -bottom-24 left-1/3 h-56 w-56 rounded-full bg-brass-500/15 blur-2xl" />
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">🎛️ Administrative Terminal</h1>
-              <p className="mt-1 text-sm text-slate-500">Central command hub for monitoring school statistics and managing portal systems synchronized natively across MongoDB Atlas cloud clusters.</p>
-            </div>
-            <div className="flex items-center gap-3 self-start sm:self-center">
-              <Link to="/admin/users/create" className="rounded-xl bg-brand-600 px-4 py-1.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-brand-700">
-                ➕ Create User
-              </Link>
-              <span className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800">
-                Super Admin Account 🔑
+              <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-brass-300 ring-1 ring-white/15">
+                <IconGraduation className="h-4 w-4" /> Administrative Terminal
               </span>
+              <h1 className="font-display mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+                Welcome, {(user?.name || '').split(' ')[0] || 'Admin'}
+              </h1>
+              <p className="mt-2 max-w-lg text-sm text-brand-100/80">
+                Central command hub for monitoring school statistics and managing portal systems.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 self-start sm:items-end sm:self-center">
+              <Link to="/a/users/create" className="inline-flex items-center gap-2 rounded-xl bg-brass-500 px-4 py-2.5 text-sm font-semibold text-brand-950 transition hover:bg-brass-400">
+                <IconUser className="h-4 w-4" /> Create user
+              </Link>
+              <Badge tone="amber">Super admin account</Badge>
             </div>
           </div>
+        </div>
 
-        {error && (
-          <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-700">
-            {error}
-          </div>
-        )}
+        <MessageBanner message={msg} />
 
-        {/* 2. Overview Stats Grid */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {metricsGrid.map((stat, idx) => (
-            <StatCard
-              key={idx}
-              label={stat.label}
-              value={stat.count}
-              icon={<span className="text-lg">{stat.icon}</span>}
-              tone={stat.tone}
-            />
-          ))}
+          <StatCard label="Registered Students" value={stats.registeredStudents} icon={<IconGraduation className="h-5 w-5" />} tone="indigo" />
+          <StatCard label="Active Teachers" value={stats.activeTeachers} icon={<IconUsers className="h-5 w-5" />} tone="emerald" />
+          <StatCard label="Notices Published" value={stats.noticesPublished} icon={<IconBell className="h-5 w-5" />} tone="amber" />
+          <StatCard label="Pending Tasks" value={stats.pendingTasks} icon={<IconAlert className="h-5 w-5" />} tone={stats.pendingTasks > 0 ? 'rose' : 'slate'} />
         </div>
 
-        {/* 3. Core Feature Management Workspace Dashboard */}
-        <div>
-          <h2 className="mb-4 text-sm font-bold uppercase tracking-wider text-slate-400">Active Management Modules</h2>
-
+        <section>
+          <h2 className="mb-4 text-xs font-bold uppercase tracking-wider text-slate-400">Active management modules</h2>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-
-            <div className="group flex flex-col justify-between space-y-4 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md">
-              <div className="space-y-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-xl ring-1 ring-amber-100">📢</div>
-                <h3 className="text-lg font-bold text-slate-900">Broadcast Bulletins</h3>
-                <p className="text-sm leading-relaxed text-slate-500">
-                  Broadcast announcements, news alerts, or urgent warnings straight onto parent and student timeline panels instantly with support for official PDF circular attachments.
-                </p>
-              </div>
-              <Link to="/admin/notices" className="block w-full rounded-xl bg-brand-600 py-2 text-center text-xs font-bold text-white shadow-sm transition-colors group-hover:bg-brand-700">Open Notice Board</Link>
-            </div>
-
-            <div className="group flex flex-col justify-between space-y-4 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md">
-              <div className="space-y-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-50 text-xl ring-1 ring-sky-100">👥</div>
-                <h3 className="text-lg font-bold text-slate-900">User Control Matrix</h3>
-                <p className="text-sm leading-relaxed text-slate-500">Audit faculty profiles, perform roll shifts, delete accounts, or re-route metadata across dynamic collection parameters.</p>
-              </div>
-              <Link to="/admin/users" className="block w-full rounded-xl bg-brand-600 py-2 text-center text-xs font-bold text-white shadow-sm transition-colors group-hover:bg-brand-700">
-                Configure Roster Settings
-              </Link>
-            </div>
-
-            <div className="group flex flex-col justify-between space-y-4 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md">
-              <div className="space-y-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-xl ring-1 ring-violet-100">🌐</div>
-                <h3 className="text-lg font-bold text-slate-900">Manage Website landing</h3>
-                <p className="text-sm leading-relaxed text-slate-500">Modify welcome text headers, update school logo branding properties, or change showcase hero gallery banners live on Cloudinary.</p>
-              </div>
-              <Link to="/admin/website" className="block w-full rounded-xl bg-brand-600 py-2 text-center text-xs font-bold text-white shadow-sm transition-colors group-hover:bg-brand-700">Open Layout Manager</Link>
-            </div>
-
-            <div className="group flex flex-col justify-between space-y-4 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md">
-              <div className="space-y-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-xl ring-1 ring-violet-100">⚙️</div>
-                <h3 className="text-lg font-bold text-slate-900">Institution Settings</h3>
-                <p className="text-sm leading-relaxed text-slate-500">
-                  Dynamically manage active class section names and course subject structures globally across all portal dropdown matrices.
-                </p>
-              </div>
-              <Link
-                to="/admin/settings"
-                className="block w-full rounded-xl bg-brand-600 py-2 text-center text-xs font-bold text-white shadow-sm transition-colors group-hover:bg-brand-700"
-              >
-                Configure School Layout
-              </Link>
-            </div>
-
-            <div className="group flex flex-col justify-between space-y-4 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md">
-              <div className="space-y-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-xl ring-1 ring-amber-100">👩‍🎓</div>
-                <h3 className="text-lg font-bold text-slate-900">Application Approvals</h3>
-                <p className="text-sm leading-relaxed text-slate-500">Audit pending online admission forms registers, execute authorization passes, trigger email notifications, and explore the approved archive registries.</p>
-              </div>
-              <Link to="/admin/approvals" className="block w-full rounded-xl bg-brand-600 py-2 text-center text-xs font-bold text-white shadow-sm transition-colors group-hover:bg-brand-700">Open Approval Desk</Link>
-            </div>
-
+            {modules.map((m) => (
+              <Card key={m.to} className="group flex flex-col justify-between p-6 transition hover-lift">
+                <div className="space-y-3">
+                  <span className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${m.tint}`}>{m.icon}</span>
+                  <h3 className="text-lg font-semibold tracking-tight text-slate-900">{m.title}</h3>
+                  <p className="text-sm leading-relaxed text-slate-500">{m.body}</p>
+                </div>
+                <Link to={m.to} className="mt-5 inline-flex items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition group-hover:bg-brand-700">
+                  {m.cta} <span aria-hidden="true">→</span>
+                </Link>
+              </Card>
+            ))}
           </div>
-        </div>
-
+        </section>
       </div>
-    </div>
+    </PageContainer>
   );
 };
 

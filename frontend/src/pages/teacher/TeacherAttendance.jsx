@@ -1,8 +1,9 @@
 // src/pages/TeacherAttendance.jsx
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { Spinner } from '../../components/ui.jsx';
+import api from '../../core/api.js';
+import { PageContainer, Card, Spinner, MessageBanner } from '../../components/ui.jsx';
+import { IconCalendar, IconUsers, IconBack, IconAlert, IconShield } from '../../components/icons.jsx';
 
 const TeacherAttendance = () => {
   const navigate = useNavigate();
@@ -36,11 +37,8 @@ const TeacherAttendance = () => {
   }, [assignedClass, selectedDateStr]);
 
   const fetchInitialClassContext = async () => {
-    const storedUser = JSON.parse(localStorage.getItem('schoolUser'));
-    if (!storedUser || !storedUser.token) return;
     try {
-      const config = { headers: { Authorization: `Bearer ${storedUser.token}` } };
-      const { data } = await axios.get('http://localhost:5000/api/teacher/my-class', config);
+      const { data } = await api.get('/teacher/my-class');
       setAssignedClass(data.classTeacherOf);
     } catch (err) {
       console.error(err);
@@ -49,13 +47,10 @@ const TeacherAttendance = () => {
 
   const fetchMonthHeatmap = async () => {
     setFetchingHeatmap(true);
-    const storedUser = JSON.parse(localStorage.getItem('schoolUser'));
     try {
-      const config = {
-        headers: { Authorization: `Bearer ${storedUser.token}` },
-        params: { year: currentDate.getFullYear(), month: currentDate.getMonth() + 1 }
-      };
-      const { data } = await axios.get(`http://localhost:5000/api/teacher/attendance-calendar-heatmap/${assignedClass}`, config);
+      const { data } = await api.get(`/teacher/attendance-calendar-heatmap/${assignedClass}`, {
+        params: { year: currentDate.getFullYear(), month: currentDate.getMonth() + 1 },
+      });
       if (data.success) {
         setHeatmapData({
           submittedDates: data.submittedDates || [],
@@ -73,7 +68,6 @@ const TeacherAttendance = () => {
   const checkAndFetchDailyRoll = async () => {
     setLoading(true);
     setMessage({ text: '', type: '' });
-    const storedUser = JSON.parse(localStorage.getItem('schoolUser'));
 
     const dateObj = new Date(selectedDateStr);
     const isWeekend = heatmapData.weeklyOffDays.includes(dateObj.getDay());
@@ -86,21 +80,19 @@ const TeacherAttendance = () => {
     }
 
     try {
-      const config = {
-        headers: { Authorization: `Bearer ${storedUser.token}` },
-        params: { date: selectedDateStr }
-      };
-      const classRes = await axios.get('http://localhost:5000/api/teacher/my-class', config);
+      const classRes = await api.get('/teacher/my-class');
       const standardRoster = classRes.data.roster || [];
 
-      const { data } = await axios.get(`http://localhost:5000/api/teacher/attendance-by-date/${assignedClass}`, config);
+      const { data } = await api.get(`/teacher/attendance-by-date/${assignedClass}`, {
+        params: { date: selectedDateStr },
+      });
 
       if (data.success && data.exists) {
         setRoster(standardRoster.map(student => {
           const matchingRecord = data.records.find(r => r.studentId === student._id);
           return { ...student, status: matchingRecord ? matchingRecord.status : 'Present' };
         }));
-        setMessage({ text: `ℹ️ Notice: Attendance records for ${selectedDateStr} are already submitted. Re-saving will overwrite entries.`, type: 'info' });
+        setMessage({ text: `Notice: Attendance for ${selectedDateStr} is already submitted. Re-saving will overwrite entries.`, type: 'info' });
       } else {
         setRoster(standardRoster.map(s => ({ ...s, status: 'Present' })));
       }
@@ -112,10 +104,8 @@ const TeacherAttendance = () => {
   };
 
   const handleToggleWeeklyOffDay = async (dayIndex) => {
-    const storedUser = JSON.parse(localStorage.getItem('schoolUser'));
     try {
-      const config = { headers: { Authorization: `Bearer ${storedUser.token}` } };
-      const { data } = await axios.post('http://localhost:5000/api/config/toggle-offday', { dayIndex }, config);
+      const { data } = await api.post('/config/toggle-offday', { dayIndex });
       if (data.success) {
         setHeatmapData(prev => ({ ...prev, weeklyOffDays: data.weeklyOffDays }));
       }
@@ -125,13 +115,11 @@ const TeacherAttendance = () => {
   };
 
   const handleToggleSingleDayHoliday = async () => {
-    const storedUser = JSON.parse(localStorage.getItem('schoolUser'));
     try {
-      const config = { headers: { Authorization: `Bearer ${storedUser.token}` } };
-      const { data } = await axios.post('http://localhost:5000/api/config/toggle-holiday', { dateStr: selectedDateStr }, config);
+      const { data } = await api.post('/config/toggle-holiday', { dateStr: selectedDateStr });
       if (data.success) {
         setHeatmapData(prev => ({ ...prev, holidays: data.holidays }));
-        setMessage({ text: '✔ Holiday parameters adjusted successfully.', type: 'success' });
+        setMessage({ text: 'Holiday parameters adjusted successfully.', type: 'success' });
       }
     } catch (e) {
       console.error(e);
@@ -145,12 +133,10 @@ const TeacherAttendance = () => {
   const saveAttendanceSheet = async (e) => {
     e.preventDefault();
     setSaving(true);
-    const storedUser = JSON.parse(localStorage.getItem('schoolUser'));
     const records = roster.map(s => ({ studentId: s._id, status: s.status }));
     try {
-      const config = { headers: { Authorization: `Bearer ${storedUser.token}` } };
-      await axios.post('http://localhost:5000/api/teacher/attendance', { date: selectedDateStr, records }, config);
-      setMessage({ text: '🎉 Attendance synchronized successfully!', type: 'success' });
+      await api.post('/teacher/attendance', { date: selectedDateStr, records });
+      setMessage({ text: 'Attendance synchronized successfully!', type: 'success' });
       await fetchMonthHeatmap();
     } catch (err) {
       console.error(err);
@@ -194,7 +180,7 @@ const TeacherAttendance = () => {
           className={`cursor-pointer rounded-xl border p-2 text-center font-mono text-xs font-bold transition-all sm:p-2.5 ${cellStyle}`}
         >
           {day}
-          {isSubmitted && !isWeekend && !isHoliday && <span className="block font-sans text-[7px] tracking-tighter text-emerald-600">Done ✔</span>}
+          {isSubmitted && !isWeekend && !isHoliday && <span className="block font-sans text-[7px] tracking-tighter text-emerald-600">Done</span>}
           {isWeekend && <span className="block font-sans text-[7px] font-normal text-slate-400">Off</span>}
           {isHoliday && <span className="block font-sans text-[7px] font-normal text-amber-700">Vacation</span>}
         </button>
@@ -209,39 +195,46 @@ const TeacherAttendance = () => {
 
   if (!assignedClass) {
     return (
-      <div className="mx-auto max-w-4xl p-8">
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-400">
-          ⚠️ Faculty Clearance Required: You do not own an assigned class management scope block.
-        </div>
-      </div>
+      <PageContainer className="max-w-4xl">
+        <Card className="p-8 text-center">
+          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+            <IconAlert className="h-5 w-5" />
+          </div>
+          <p className="mt-3 font-bold text-slate-700">Faculty clearance required</p>
+          <p className="mt-1 text-sm text-slate-500">You do not own an assigned class management scope block.</p>
+        </Card>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-8">
+    <PageContainer className="max-w-7xl">
+      <div className="animate-fade-up space-y-6">
 
-      {/* Repeating Weekly Off-Day Control Manager */}
-      <div className="space-y-3 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
-        <div>
-          <h3 className="text-xs font-black uppercase tracking-wider text-slate-900">🛠️ Institution Weekly Off-Days Manager</h3>
-          <p className="mt-0.5 text-[11px] text-slate-400">Toggle generic repeating off-days column rows across your calendar framework layout.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {WEEKDAYS.map(day => {
-            const isActive = heatmapData.weeklyOffDays.includes(day.index);
-            return (
-              <button
-                key={day.index}
-                type="button"
-                onClick={() => handleToggleWeeklyOffDay(day.index)}
-                className={`cursor-pointer rounded-xl border px-3 py-1.5 text-xs font-bold ${isActive ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-500'}`}
-              >
-                {day.label} {isActive ? '🔒 [Closed]' : '📖 [Open]'}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+        {/* Repeating Weekly Off-Day Control Manager */}
+        <Card className="space-y-3 p-4">
+          <div>
+            <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-900">
+              <IconShield className="h-4 w-4 text-brand-500" /> Weekly off-days manager
+            </h3>
+            <p className="mt-1 text-xs text-slate-400">Toggle generic repeating off-days across the calendar layout.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {WEEKDAYS.map(day => {
+              const isActive = heatmapData.weeklyOffDays.includes(day.index);
+              return (
+                <button
+                  key={day.index}
+                  type="button"
+                  onClick={() => handleToggleWeeklyOffDay(day.index)}
+                  className={`cursor-pointer rounded-xl border px-3 py-1.5 text-xs font-bold transition-colors ${isActive ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
+                >
+                  {day.label} {isActive ? 'Closed' : 'Open'}
+                </button>
+              );
+            })}
+          </div>
+        </Card>
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
 
@@ -254,7 +247,9 @@ const TeacherAttendance = () => {
           )}
 
           <div className="flex items-center justify-between border-b pb-3">
-            <h2 className="text-sm font-black uppercase text-slate-900">📅 Session Calendar</h2>
+            <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-900">
+              <IconCalendar className="h-4 w-4 text-brand-500" /> Session calendar
+            </h2>
             <div className="flex gap-1 text-xs">
               <button
                 type="button"
@@ -295,10 +290,10 @@ const TeacherAttendance = () => {
         <div className="space-y-4 lg:col-span-2">
           <div className="flex items-center justify-between gap-2">
             <button
-              onClick={() => navigate('/teacher/dashboard')}
-              className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-500 shadow-xs transition-colors hover:text-slate-900"
+              onClick={() => navigate('/t/dashboard')}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm transition-colors hover:bg-slate-50"
             >
-              ← Dashboard
+              <IconBack className="h-4 w-4" /> Dashboard
             </button>
             <button
               type="button"
@@ -309,24 +304,19 @@ const TeacherAttendance = () => {
                   : 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100'
               }`}
             >
-              {currentSelectedIsHoliday ? '📖 Re-open Selected Date' : '🔒 Toggle Selected Date as Holiday'}
+              {currentSelectedIsHoliday ? 'Re-open selected date' : 'Toggle selected date as holiday'}
             </button>
           </div>
 
-          {message.text && (
-            <div className={`rounded-xl border p-3 text-xs font-bold ${
-              message.type === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' :
-              message.type === 'info' ? 'border-sky-200 bg-sky-50 text-sky-800' : 'border-rose-200 bg-rose-50 text-rose-700'
-            }`}>
-              {message.text}
-            </div>
-          )}
+          <MessageBanner message={message} />
 
           <form onSubmit={saveAttendanceSheet} className="space-y-6 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between border-b pb-4">
               <div>
-                <h2 className="text-lg font-bold tracking-tight text-slate-900">👥 Roster Entry Ledger ({assignedClass})</h2>
-                <p className="mt-0.5 font-mono text-xs text-slate-500">Active Target Date: {selectedDateStr}</p>
+                <h2 className="flex items-center gap-2 text-lg font-bold tracking-tight text-slate-900">
+                  <IconUsers className="h-5 w-5 text-brand-500" /> Roster entry ledger ({assignedClass})
+                </h2>
+                <p className="mt-0.5 font-mono text-xs text-slate-500">Active target date: {selectedDateStr}</p>
               </div>
             </div>
 
@@ -334,10 +324,10 @@ const TeacherAttendance = () => {
               <div className="space-y-2 py-12 text-center text-slate-400">
                 <p className="text-sm font-bold text-slate-600">
                   {currentSelectedIsWeekend
-                    ? '🔒 This date falls on a recurring Weekly Off-Day.'
-                    : '⛱️ This specific unique calendar date is marked as an institution holiday vacation break.'}
+                    ? 'This date falls on a recurring weekly off-day.'
+                    : 'This date is marked as an institution holiday.'}
                 </p>
-                <p className="text-xs">Daily roster data entry processing is deactivated for closed sessions.</p>
+                <p className="text-xs">Daily roster data entry is deactivated for closed sessions.</p>
               </div>
             ) : loading ? (
               <div className="flex items-center justify-center py-12">
@@ -414,7 +404,8 @@ const TeacherAttendance = () => {
           </form>
         </div>
       </div>
-    </div>
+      </div>
+    </PageContainer>
   );
 };
 

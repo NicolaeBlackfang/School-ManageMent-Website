@@ -1,9 +1,10 @@
 // src/App.jsx
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
-// Layout & Auth Controls
-import Navbar from './components/Navbar';
-import ProtectedRoute from './components/ProtectedRoute';
+// Layouts
+import PublicLayout from './components/layout/PublicLayout.jsx';
+import AppShell from './components/layout/AppShell.jsx';
+import ProtectedRoute from './components/ProtectedRoute.jsx';
 
 // Auth & General Pages
 import Login from './pages/auth/Login';
@@ -12,6 +13,14 @@ import Profile from './pages/auth/Profile';
 
 // Shared Pages
 import SharedNoticeBoard from './pages/shared/NoticeBoard';
+
+// Parent page
+import ParentHome from './pages/parent/ParentHome';
+
+// Public Pages
+import PublicPortal from './pages/userpublic/PublicPortal';
+import PublicAdmission from './pages/userpublic/PublicAdmission';
+import PublicFounders from './pages/userpublic/PublicFounders';
 
 // Student Pages
 import StudentDashboard from './pages/student/StudentDashboard';
@@ -39,218 +48,90 @@ import AdminWebsiteManager from './pages/admin/AdminWebsiteManager';
 import AdminAppApproval from './pages/admin/AdminAppApproval';
 import AdminApplicationDetails from './pages/admin/AdminApplicationDetails';
 
-//Public Pages
-import PublicPortal from './pages/userpublic/PublicPortal';
-import PublicAdmission from './pages/userpublic/PublicAdmission';
-import PublicFounders from './pages/userpublic/PublicFounders';
+// Map legacy /student|teacher|admin/* paths onto the new /s|/t|/a/* structure.
+const legacyRoleRedirects = [
+  ['/student/dashboard', '/s/dashboard'],
+  ['/student/notices', '/s/notices'],
+  ['/student/grades', '/s/grades'],
+  ['/student/attendance', '/s/attendance'],
+  ['/teacher/dashboard', '/t/dashboard'],
+  ['/teacher/roster', '/t/roster'],
+  ['/teacher/attendance', '/t/attendance'],
+  ['/teacher/analytics', '/t/analytics'],
+  ['/teacher/gradebook', '/t/gradebook'],
+  ['/teacher/notices', '/t/notices'],
+  ['/teacher/users/create', '/t/users/create'],
+  ['/teacher/users/edit/:id', '/t/users/edit/:id'],
+  ['/admin/dashboard', '/a/dashboard'],
+  ['/admin/users', '/a/users'],
+  ['/admin/users/create', '/a/users/create'],
+  ['/admin/users/edit/:id', '/a/users/edit/:id'],
+  ['/admin/notices', '/a/notices'],
+  ['/admin/settings', '/a/settings'],
+  ['/admin/website', '/a/website'],
+  ['/admin/approvals', '/a/approvals'],
+  ['/admin/application/:id', '/a/applications/:id'],
+];
 
+const shellChildren = [
+  <Route key="profile" path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />,
+  <Route key="parent" path="/p/home" element={<ProtectedRoute allowedRoles={['parent']}><ParentHome /></ProtectedRoute>} />,
+
+  // Student
+  <Route key="sd" path="/s/dashboard" element={<ProtectedRoute allowedRoles={['student']}><StudentDashboard /></ProtectedRoute>} />,
+  <Route key="sn" path="/s/notices" element={<ProtectedRoute allowedRoles={['student']}><StudentNotices /></ProtectedRoute>} />,
+  <Route key="sg" path="/s/grades" element={<ProtectedRoute allowedRoles={['student']}><StudentGrades /></ProtectedRoute>} />,
+  <Route key="sa" path="/s/attendance" element={<ProtectedRoute allowedRoles={['student']}><StudentAttendanceHub /></ProtectedRoute>} />,
+
+  // Teacher
+  <Route key="td" path="/t/dashboard" element={<ProtectedRoute allowedRoles={['teacher', 'admin']}><TeacherDashboard /></ProtectedRoute>} />,
+  <Route key="tr" path="/t/roster" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherRoster /></ProtectedRoute>} />,
+  <Route key="tt" path="/t/attendance" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherAttendance /></ProtectedRoute>} />,
+  <Route key="ty" path="/t/analytics" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherAnalytics /></ProtectedRoute>} />,
+  <Route key="tb" path="/t/gradebook" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherGradebook /></ProtectedRoute>} />,
+  <Route key="tn" path="/t/notices" element={<ProtectedRoute allowedRoles={['teacher']}><SharedNoticeBoard /></ProtectedRoute>} />,
+  <Route key="tc" path="/t/users/create" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherCreateStudent /></ProtectedRoute>} />,
+  <Route key="te" path="/t/users/edit/:id" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherEditStudent /></ProtectedRoute>} />,
+
+  // Admin
+  <Route key="ad" path="/a/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />,
+  <Route key="au" path="/a/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUserRoster /></ProtectedRoute>} />,
+  <Route key="aun" path="/a/users/create" element={<ProtectedRoute allowedRoles={['admin']}><AdminCreateUser /></ProtectedRoute>} />,
+  <Route key="aue" path="/a/users/edit/:id" element={<ProtectedRoute allowedRoles={['admin']}><AdminEditUser /></ProtectedRoute>} />,
+  <Route key="an" path="/a/notices" element={<ProtectedRoute allowedRoles={['admin']}><AdminNoticeBoard /></ProtectedRoute>} />,
+  <Route key="as" path="/a/settings" element={<ProtectedRoute allowedRoles={['admin']}><AdminSettings /></ProtectedRoute>} />,
+  <Route key="aw" path="/a/website" element={<ProtectedRoute allowedRoles={['admin']}><AdminWebsiteManager /></ProtectedRoute>} />,
+  <Route key="aa" path="/a/approvals" element={<ProtectedRoute allowedRoles={['admin']}><AdminAppApproval /></ProtectedRoute>} />,
+  <Route key="aap" path="/a/applications/:id" element={<ProtectedRoute allowedRoles={['admin']}><AdminApplicationDetails /></ProtectedRoute>} />,
+
+  // Legacy role-route redirects (feature parity: old bookmarks keep working)
+  ...legacyRoleRedirects.map(([from, to]) => (
+    <Route key={from} path={from} element={<Navigate to={to} replace />} />
+  )),
+];
 
 function App() {
   return (
     <Router>
-      <div className="flex min-h-screen flex-col bg-slate-50">
-        {/* Persistent App Header Navigation */}
-        <Navbar />
+      <Routes>
+        {/* PUBLIC + AUTH SITE */}
+        <Route element={<PublicLayout />}>
+          <Route path="/" element={<PublicPortal />} />
+          <Route path="/admission" element={<PublicAdmission />} />
+          <Route path="/founders" element={<PublicFounders />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          {/* Legacy public redirects */}
+          <Route path="/public/admission" element={<Navigate to="/admission" replace />} />
+          <Route path="/public/founders" element={<Navigate to="/founders" replace />} />
+        </Route>
 
-        {/* Main Content Area */}
-        <main className="flex-grow">
-          <Routes>
-            {/* PUBLIC ROUTES */}
-            <Route path="/" element={<PublicPortal />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/public/admission" element={<PublicAdmission />} />
-            <Route path="/public/founders" element={<PublicFounders />} />
+        {/* AUTHENTICATED WORKSPACE */}
+        <Route element={<AppShell />}>{shellChildren}</Route>
 
-            {/* SHARED SECURED ROUTES */}
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
-
-            {/* STUDENT ROUTES */}
-            <Route
-              path="/student/dashboard"
-              element={
-                <ProtectedRoute allowedRoles={['student']}>
-                  <StudentDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/student/notices"
-              element={
-                <ProtectedRoute allowedRoles={['student']}>
-                  <StudentNotices />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/student/grades"
-              element={
-                <ProtectedRoute allowedRoles={['student']}>
-                  <StudentGrades />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/student/attendance"
-              element={
-                <ProtectedRoute allowedRoles={['student']}>
-                  <StudentAttendanceHub />
-                </ProtectedRoute>
-              }
-            />
-
-            {/* TEACHER ROUTES */}
-            <Route
-              path="/teacher/dashboard"
-              element={
-                <ProtectedRoute allowedRoles={['teacher', 'admin']}>
-                  <TeacherDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/teacher/roster"
-              element={
-                <ProtectedRoute allowedRoles={['teacher']}>
-                  <TeacherRoster />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/teacher/attendance"
-              element={
-                <ProtectedRoute allowedRoles={['teacher']}>
-                  <TeacherAttendance />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/teacher/analytics"
-              element={
-                <ProtectedRoute allowedRoles={['teacher']}>
-                  <TeacherAnalytics />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/teacher/gradebook"
-              element={
-                <ProtectedRoute allowedRoles={['teacher']}>
-                  <TeacherGradebook />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/teacher/notices"
-              element={
-                <ProtectedRoute allowedRoles={['teacher']}>
-                  <SharedNoticeBoard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/teacher/users/create"
-              element={
-                <ProtectedRoute allowedRoles={['teacher']}>
-                  <TeacherCreateStudent />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/teacher/users/edit/:id"
-              element={
-                <ProtectedRoute allowedRoles={['teacher']}>
-                  <TeacherEditStudent />
-                </ProtectedRoute>
-              }
-            />
-
-            {/* ADMIN ROUTES */}
-            <Route
-              path="/admin/dashboard"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/users"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminUserRoster />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/users/create"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminCreateUser />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/users/edit/:id"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminEditUser />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/notices"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminNoticeBoard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/settings"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminSettings />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/website"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminWebsiteManager />
-                </ProtectedRoute>
-              }
-            />
-            <Route 
-              path="/admin/approvals" 
-              element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <AdminAppApproval />
-              </ProtectedRoute>
-              } 
-            />
-
-            <Route 
-              path="/admin/application/:id" 
-              element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <AdminApplicationDetails />
-              </ProtectedRoute>
-              } 
-            />  
-
-
-          </Routes>
-        </main>
-      </div>
+        {/* Fallthrough */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </Router>
   );
 }

@@ -1,97 +1,96 @@
-// src/pages/StudentNotices.jsx
+// src/pages/student/StudentNotices.jsx
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { Spinner, EmptyState } from '../../components/ui.jsx';
+import { Link } from 'react-router-dom';
+import api from '../../core/api.js';
+import { PageContainer, Card, Spinner, EmptyState, MessageBanner, Badge } from '../../components/ui.jsx';
+import { IconBell, IconBack, IconFile } from '../../components/icons.jsx';
 
 const StudentNotices = () => {
-  const navigate = useNavigate();
   const [notices, setNotices] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [msg, setMsg] = useState({ text: '', type: '' });
 
   useEffect(() => {
-    const fetchBulletinFeed = async () => {
-      const storedUser = JSON.parse(localStorage.getItem('schoolUser'));
-      if (!storedUser || !storedUser.token) {
-        setError('Session expired. Please log in again.');
-        setLoading(false);
-        return;
-      }
-
+    let cancelled = false;
+    (async () => {
       try {
-        const config = { headers: { Authorization: `Bearer ${storedUser.token}` } };
-        // ⚡ Queries the backend notice route filter layer built specifically to filter audience groups
-        const { data } = await axios.get('http://localhost:5000/api/notices', config);
-        setNotices(data.data);
-      } catch (err) {
-        setError('Failed to safely synchronize with institutional circular data logs.');
+        const { data } = await api.get('/notices');
+        if (!cancelled) setNotices(data.data);
+      } catch {
+        if (!cancelled) setMsg({ text: 'Failed to synchronize with institutional circular data.', type: 'error' });
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
-    };
-    fetchBulletinFeed();
+    })();
+    return () => { cancelled = true; };
   }, []);
 
-  if (loading) return <div className="flex min-h-screen items-center justify-center bg-slate-50"><Spinner className="h-10 w-10" /></div>;
-
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-8">
+    <PageContainer className="max-w-4xl">
+      <div className="animate-fade-up space-y-6">
+        <Link
+          to="/s/dashboard"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
+        >
+          <IconBack className="h-4 w-4" /> Return to dashboard
+        </Link>
 
-      {/* Return Action Trigger */}
-      <button
-        onClick={() => navigate('/student/dashboard')}
-        className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-500 shadow-xs transition-colors hover:text-slate-900"
-      >
-        ← Return to Terminal Hub
-      </button>
-
-      <div className="space-y-4">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900">📢 Official School Bulletin Board</h1>
-          <p className="mt-0.5 text-xs text-slate-400">Global announcements, news updates, and emergency schedule briefs dispatches.</p>
+        <div className="flex items-center gap-3">
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-700 text-white shadow-lg shadow-brand-700/20">
+            <IconBell className="h-6 w-6" />
+          </span>
+          <div>
+            <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+              Official Bulletin Board
+            </h1>
+            <p className="text-sm text-slate-500">Announcements, news updates and emergency schedule briefs.</p>
+          </div>
         </div>
 
-        {error && <div className="rounded-xl bg-rose-50 p-4 text-sm font-semibold text-rose-700">⚠️ {error}</div>}
+        <MessageBanner message={msg} />
 
-        {notices.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-16"><Spinner /></div>
+        ) : notices.length === 0 ? (
           <EmptyState
             title="No circulars published"
-            message="No circular notices published yet for your section tracking boundaries."
+            message="No notices have been published for your audience yet. Check back soon."
           />
         ) : (
           <div className="space-y-4">
             {notices.map((notice) => (
-              <div key={notice._id} className="space-y-3 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm transition-all hover:border-brand-200 hover:shadow-md">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h3 className="text-lg font-bold tracking-tight text-slate-900">{notice.title}</h3>
-                    <span className="mt-0.5 block font-mono text-[10px] text-slate-400">Published On: {new Date(notice.createdAt).toLocaleDateString('en-BD', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+              <Card key={notice._id} className="p-6 transition hover-lift">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="text-lg font-semibold tracking-tight text-slate-900">{notice.title}</h3>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                      <Badge tone="slate">{notice.audience || 'All'}</Badge>
+                      <span className="text-[11px] text-slate-400">
+                        Published {new Date(notice.createdAt).toLocaleDateString('en-BD', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
+                    </div>
                   </div>
                 </div>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-600">{notice.content}</p>
+                <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">{notice.content}</p>
 
-                {/* Conditional Rendering for Attached PDF circulars files mapping references */}
                 {notice.attachmentUrl && (
-                  <div className="pt-2">
-                    {/* Fixed: backend already stores the absolute cloud URL — no localhost prefix needed */}
+                  <div className="mt-4">
                     <a
                       href={notice.attachmentUrl}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex items-center gap-1.5 rounded-lg border border-brand-100 bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700 transition-colors hover:bg-brand-100"
                     >
-                      📄 View Attached Official PDF File
+                      <IconFile className="h-4 w-4" /> View attached PDF
                     </a>
                   </div>
                 )}
-              </div>
+              </Card>
             ))}
           </div>
         )}
       </div>
-
-    </div>
+    </PageContainer>
   );
 };
 

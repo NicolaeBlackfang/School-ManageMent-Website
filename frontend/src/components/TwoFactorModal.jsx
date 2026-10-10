@@ -1,28 +1,27 @@
 // src/components/TwoFactorModal.jsx
-// NOTE: This component is currently not wired into any route/flow (as of the redesign).
-// Purely a restyle; logic, state, props and API contract are unchanged.
-import React, { useState, useContext } from 'react';
-import { AuthContext } from '../../context/AuthContext';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useAuth } from '../context/AuthContext.jsx';
 import { IconShield, IconX } from './icons.jsx';
 import { inputClass } from './ui.jsx';
 
-const TwoFactorModal = ({ userId, onClose }) => {
+// mode = 'login'  → completes the 2FA step of a sign-in (preauth cookie already set)
+// mode = 'setup'  → confirms a freshly generated TOTP secret (QR + manual key shown)
+const TwoFactorModal = ({ mode = 'login', qrCode, secret, onClose, onSuccess }) => {
+  const { verify2FA } = useAuth();
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
-  const { login } = useContext(AuthContext);
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
 
-  const handleVerify2FA = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      const res = await axios.post('/api/auth/verify-2fa', { userId, code });
-      login(res.data.user, res.data.token);
-      onClose();
-      navigate('/profile');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Invalid 2FA code');
+    setError('');
+    setLoading(true);
+    const res = await verify2FA(code.trim());
+    setLoading(false);
+    if (res.success) {
+      onSuccess?.(res.user);
+    } else {
+      setError(res.message);
     }
   };
 
@@ -43,8 +42,30 @@ const TwoFactorModal = ({ userId, onClose }) => {
           </button>
         </div>
 
-        <h3 className="mt-4 text-lg font-bold text-slate-900">Two-Factor Authentication</h3>
-        <p className="mt-1 text-sm text-slate-500">Enter the 6-digit verification code sent to your device.</p>
+        <h3 className="font-display mt-4 text-xl font-semibold tracking-tight text-slate-900">
+          Two-Factor Authentication
+        </h3>
+        <p className="mt-1 text-sm text-slate-500">
+          {mode === 'setup'
+            ? 'Scan the code with your authenticator app, then confirm it with a 6-digit code.'
+            : 'Enter the 6-digit code from your authenticator app to finish signing in.'}
+        </p>
+
+        {mode === 'setup' && qrCode && (
+          <div className="mt-4 flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <img src={qrCode} alt="QR code for authenticator setup" className="h-40 w-40 rounded-lg bg-white p-1" />
+            {secret && (
+              <div className="w-full">
+                <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Manual entry key
+                </p>
+                <code className="block w-full rounded-lg bg-white px-3 py-2 text-xs break-all text-brand-700 ring-1 ring-slate-200">
+                  {secret}
+                </code>
+              </div>
+            )}
+          </div>
+        )}
 
         {error && (
           <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
@@ -52,22 +73,26 @@ const TwoFactorModal = ({ userId, onClose }) => {
           </div>
         )}
 
-        <form onSubmit={handleVerify2FA} className="mt-4 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <input
             type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={6}
             placeholder="123456"
             value={code}
-            onChange={(e) => setCode(e.target.value)}
-            maxLength="6"
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
             required
             className={`${inputClass} text-center text-lg tracking-[0.5em]`}
+            autoFocus
           />
           <div className="flex gap-3">
             <button
               type="submit"
-              className="flex-1 rounded-xl bg-brand-600 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700"
+              disabled={loading}
+              className="flex-1 rounded-xl bg-brand-600 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 disabled:opacity-60"
             >
-              Verify
+              {loading ? 'Verifying...' : mode === 'setup' ? 'Enable 2FA' : 'Verify'}
             </button>
             <button
               type="button"

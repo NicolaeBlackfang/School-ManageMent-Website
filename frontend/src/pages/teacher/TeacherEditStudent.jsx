@@ -1,50 +1,35 @@
-// src/pages/TeacherEditStudent.jsx
+// src/pages/teacher/TeacherEditStudent.jsx
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import api from '../../core/api.js';
 import defaultAvatar from '../../assets/react.svg';
-import { Spinner, inputClass, labelClass, btnPrimary, btnSecondary } from '../../components/ui.jsx';
+import { PageContainer, Card, Spinner, MessageBanner, inputClass, labelClass, btnPrimary, btnSecondary } from '../../components/ui.jsx';
+import { IconEdit, IconBack } from '../../components/icons.jsx';
 
 const TeacherEditStudent = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // Core Identity Form States
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [parentContact, setParentContact] = useState('');
   const [gradeClass, setGradeClass] = useState('');
   const [profileImage, setProfileImage] = useState('');
   const [rollNumber, setRollNumber] = useState('');
-
-  // 🟢 NEW: Global Configuration Dropdown Options State Array
   const [globalClasses, setGlobalClasses] = useState([]);
 
-  const [message, setMessage] = useState({ text: '', type: '' });
+  const [msg, setMsg] = useState({ text: '', type: '' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const fetchStudentDetails = async () => {
-      const storedUser = JSON.parse(localStorage.getItem('schoolUser'));
-      if (!storedUser || !storedUser.token) {
-        setMessage({ text: 'Session expired. Please log in again.', type: 'error' });
-        setLoading(false);
-        return;
-      }
-
       try {
-        const config = { headers: { Authorization: `Bearer ${storedUser.token}` } };
+        const configRes = await api.get('/config');
+        if (configRes.data.success) setGlobalClasses(configRes.data.data.classes || []);
 
-        // 1. 🟢 Fetch dynamic school configurations out of cloud system documents
-        const configRes = await axios.get('http://localhost:5000/api/config');
-        if (configRes.data.success) {
-          setGlobalClasses(configRes.data.data.classes);
-        }
-
-        // 2. Fetch class roster layout data streams to load current parameters
-        const { data } = await axios.get('http://localhost:5000/api/teacher/my-class', config);
-        const match = data.roster.find(s => s._id === id);
+        const { data } = await api.get('/teacher/my-class');
+        const match = data.roster.find((s) => s._id === id);
 
         if (match) {
           setName(match.name);
@@ -54,10 +39,10 @@ const TeacherEditStudent = () => {
           setProfileImage(match.profileImage || '');
           setRollNumber(match.rollNumber || '1');
         } else {
-          setMessage({ text: 'Student matrix context out of bounds.', type: 'error' });
+          setMsg({ text: 'Student record was not found in your assigned class.', type: 'error' });
         }
-      } catch (err) {
-        setMessage({ text: 'Failed to accurately synchronize profile records.', type: 'error' });
+      } catch {
+        setMsg({ text: 'Failed to synchronize profile records.', type: 'error' });
       } finally {
         setLoading(false);
       }
@@ -68,112 +53,95 @@ const TeacherEditStudent = () => {
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
-    setMessage({ text: '', type: '' });
-
-    const storedUser = JSON.parse(localStorage.getItem('schoolUser'));
+    setMsg({ text: '', type: '' });
     try {
-      const config = { headers: { Authorization: `Bearer ${storedUser.token}` } };
       const payload = { name, email, parentContact, gradeClass, rollNumber: Number(rollNumber) };
-
-      await axios.put(`http://localhost:5000/api/teacher/users/edit/${id}`, payload, config);
-
-      setMessage({ text: '✔ Student record synchronized cleanly on Atlas cloud!', type: 'success' });
-      setTimeout(() => navigate('/teacher/roster'), 1500);
+      await api.put(`/teacher/users/edit/${id}`, payload);
+      setMsg({ text: 'Student record synchronized successfully.', type: 'success' });
+      setTimeout(() => navigate('/t/roster'), 1200);
     } catch (err) {
-      setMessage({ text: err.response?.data?.message || 'Failed to apply structural parameters.', type: 'error' });
+      setMsg({ text: err.response?.data?.message || 'Failed to apply changes.', type: 'error' });
     } finally {
       setSaving(false);
     }
   };
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <Spinner className="h-10 w-10" />
-      </div>
-    );
+    return <PageContainer><div className="flex min-h-[40vh] items-center justify-center"><Spinner /></div></PageContainer>;
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-8">
-      <button onClick={() => navigate('/teacher/roster')} className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-500 shadow-xs transition-colors hover:text-slate-900">
-        ← Back to Directory
-      </button>
+    <PageContainer className="max-w-3xl">
+      <div className="animate-fade-up space-y-6">
+        <Link
+          to="/t/roster"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
+        >
+          <IconBack className="h-4 w-4" /> Back to directory
+        </Link>
 
-      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm sm:p-8">
-        <div className="mb-6 flex items-center gap-4 border-b border-slate-100 pb-6">
-          <img src={profileImage || defaultAvatar} alt="Avatar" className="h-16 w-16 rounded-full border bg-slate-50 object-cover" />
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">⚙️ Modify Student Parameters</h1>
-            <p className="text-xs text-slate-400">Isolated Management Scope: <span className="font-bold text-brand-600">{gradeClass}</span></p>
-          </div>
-        </div>
-
-        {message.text && (
-          <div className={`mb-6 rounded-xl p-3 text-sm font-medium ${message.type === 'error' ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-800'}`}>
-            {message.text}
-          </div>
-        )}
-
-        <form onSubmit={handleUpdateSubmit} className="space-y-5">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Card className="p-6 sm:p-8">
+          <div className="mb-6 flex items-center gap-4 border-b border-slate-100 pb-6">
+            <img src={profileImage || defaultAvatar} alt="Avatar" className="h-16 w-16 rounded-full border bg-slate-50 object-cover" />
             <div>
-              <label className={labelClass}>Student Name</label>
-              <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
-            </div>
-            <div>
-              <label className={labelClass}>Student Gmail Address</label>
-              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={`${inputClass} font-mono text-xs`} />
+              <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Modify Student Parameters</h1>
+              <p className="text-sm text-slate-500">
+                Management scope: <span className="font-semibold text-brand-700">{gradeClass}</span>
+              </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {/* 🟢 DYNAMIC SELECTOR: Roll selection mapping dropdown */}
+          <MessageBanner message={msg} />
+
+          <form onSubmit={handleUpdateSubmit} className="mt-2 space-y-5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className={labelClass}>Student name</label>
+                <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Student email address</label>
+                <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={`${inputClass} font-mono`} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className={labelClass}>Modify class roll position</label>
+                <select value={rollNumber} onChange={(e) => setRollNumber(e.target.value)} required className={`${inputClass} cursor-pointer`}>
+                  {Array.from({ length: 60 }, (_, i) => i + 1).map((num) => (
+                    <option key={num} value={num}>Roll #{num}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={labelClass}>Emergency parent phone</label>
+                <input type="text" required value={parentContact} onChange={(e) => setParentContact(e.target.value)} className={inputClass} />
+              </div>
+            </div>
+
             <div>
-              <label className={labelClass}>Modify Class Roll Position</label>
-              <select
-                value={rollNumber}
-                onChange={(e) => setRollNumber(e.target.value)}
-                required
-                className={`${inputClass} cursor-pointer font-bold`}
-              >
-                {Array.from({ length: 60 }, (_, i) => i + 1).map(num => (
-                  <option key={num} value={num}>Roll #{num}</option>
+              <label className={labelClass}>Update class assignment</label>
+              <select value={gradeClass} onChange={(e) => setGradeClass(e.target.value)} required className={`${inputClass} cursor-pointer`}>
+                {(globalClasses.length ? globalClasses : [gradeClass]).map((className, idx) => (
+                  <option key={idx} value={className}>{className}</option>
                 ))}
               </select>
             </div>
-            <div>
-              <label className={labelClass}>Emergency Parent Phone</label>
-              <input type="text" required value={parentContact} onChange={(e) => setParentContact(e.target.value)} className={inputClass} />
+
+            <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+              <button type="button" onClick={() => navigate('/t/roster')} className={`${btnSecondary} cursor-pointer`}>
+                Cancel
+              </button>
+              <button type="submit" disabled={saving} className={`${btnPrimary} cursor-pointer`}>
+                <IconEdit className="h-4 w-4" />
+                {saving ? 'Applying changes...' : 'Save changes'}
+              </button>
             </div>
-          </div>
-
-          {/* 🟢 DYNAMIC SELECTOR: Class Selection Dropdown matching configurations */}
-          <div>
-            <label className={labelClass}>Update Class Assignment</label>
-            <select
-              value={gradeClass}
-              onChange={(e) => setGradeClass(e.target.value)}
-              required
-              className={`${inputClass} cursor-pointer font-bold`}
-            >
-              {globalClasses.map((className, idx) => (
-                <option key={idx} value={className}>{className}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
-            <button type="button" onClick={() => navigate('/teacher/roster')} className={`${btnSecondary} cursor-pointer text-xs`}>
-              Cancel
-            </button>
-            <button type="submit" disabled={saving} className={`${btnPrimary} cursor-pointer`}>
-              {saving ? 'Applying Changes...' : 'Save Configuration Changes'}
-            </button>
-          </div>
-        </form>
+          </form>
+        </Card>
       </div>
-    </div>
+    </PageContainer>
   );
 };
 

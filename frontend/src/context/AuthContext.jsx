@@ -1,61 +1,83 @@
 // src/context/AuthContext.jsx
-import { createContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import { createContext, useContext, useState, useEffect } from 'react';
+import { api, errorMessage } from '../core/api';
 
-export const AuthContext = createContext();
+export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Check if a user session is already saved when the app opens
+  // Bootstrap the session from the HttpOnly cookie on first paint.
   useEffect(() => {
-    const storedUser = localStorage.getItem('schoolUser');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get('/auth/me');
+        if (!cancelled && res.data?.user) setUser(res.data.user);
+      } catch {
+        /* no valid session — stay signed out */
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
-  // Login Function
   const login = async (email, password) => {
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/login', { email, password });
-      setUser(res.data);
-      localStorage.setItem('schoolUser', JSON.stringify(res.data));
-      return { success: true, role: res.data.role };
-    } catch (error) {
-      return { 
-        success: false, 
-        message: error.response?.data?.message || 'Login failed. Please check your network.' 
-      };
+      const res = await api.post('/auth/login', { email, password });
+      if (res.data?.twoFactorRequired) {
+        // Password accepted — finish with a TOTP code.
+        return { success: false, twoFactorRequired: true, user: res.data.user };
+      }
+      if (res.data?.user) setUser(res.data.user);
+      return { success: true, user: res.data.user };
+    } catch (err) {
+      return { success: false, message: errorMessage(err, 'Login failed. Please check your credentials.') };
     }
   };
 
-  // Register Function
-  const register = async (name, email, password, role) => {
+  // Completes a 2FA-gated login (preauth cookie already issued server-side).
+  const verify2FA = async (code) => {
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/register', { name, email, password, role });
-      setUser(res.data);
-      localStorage.setItem('schoolUser', JSON.stringify(res.data));
-      return { success: true, role: res.data.role };
-    } catch (error) {
-      return { 
-        success: false, 
-        message: error.response?.data?.message || 'Registration failed.' 
-      };
+      const res = await api.post('/auth/2fa/verify', { code });
+      if (res.data?.user) setUser(res.data.user);
+      return { success: true, user: res.data.user };
+    } catch (err) {
+      return { success: false, message: errorMessage(err, 'Verification failed. Please check the code.') };
     }
   };
 
-  // Logout Function
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('schoolUser');
+  const register = async (name, email, password) => {
+    try {
+      const res = await api.post('/auth/register', { name, email, password });
+      if (res.data?.user) setUser(res.data.user);
+      return { success: true, user: res.data.user };
+    } catch (err) {
+      return { success: false, message: errorMessage(err, 'Registration failed.') };
+    }
+  };
+
+  const updateUser = (patch) => {
+    setUser((prev) => (prev ? { ...prev, ...patch } : prev));
+  };
+
+  const logout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch {
+      /* session cookie already gone — clear local state regardless */
+    } finally {
+      setUser(null);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
-      {!loading && children}
+    <AuthContext.Provider value={{ user, login, register, verify2FA, logout, updateUser, loading }}>
+      {children}
     </AuthContext.Provider>
   );
 };
+
+export const useAuth = () => useContext(AuthContext);
