@@ -2,8 +2,9 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
+    const uri = process.env.MONGODB_URI || process.env.MONGO_URI;
     // Force a strict timeout so it doesn't hang forever
-    await mongoose.connect(process.env.MONGO_URI, {
+    await mongoose.connect(uri, {
       serverSelectionTimeoutMS: 5000 
     });
     console.log('🚀 Initial Mongoose connection trigger successful');

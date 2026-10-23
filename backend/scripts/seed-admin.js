@@ -42,13 +42,14 @@ if (password.length < 8) {
 }
 
 const run = async () => {
-  if (!process.env.MONGO_URI) {
-    console.error('❌ MONGO_URI is not defined in backend/.env');
+  const uri = process.env.MONGODB_URI || process.env.MONGO_URI;
+  if (!uri) {
+    console.error('❌ MONGODB_URI (or MONGO_URI) is not defined in backend/.env');
     process.exit(1);
   }
 
   try {
-    await mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 10000 });
+    await mongoose.connect(uri, { serverSelectionTimeoutMS: 10000 });
     console.log('🚀 Connected to MongoDB.');
 
     const existing = await User.findOne({ email });
