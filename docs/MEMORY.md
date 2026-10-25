@@ -30,7 +30,7 @@ npm install
 npm install --prefix backend
 npm install --prefix frontend
 
-# Configure Server/.env (copy Server/.env.example)
+# Configure backend/.env (copy backend/.env.example)
 # MONGODB_URI (or MONGO_URI) and JWT_SECRET are required
 
 npm run dev            # backend (5000) + frontend (5173)
@@ -62,7 +62,7 @@ node scripts/backfillAssignments.js --apply  # write Assignment rows
 
 ## 3. Environment variables
 
-Backend reads `Server/.env`. `dotenv` is loaded in `server.js` before anything uses env values.
+Backend reads `backend/.env`. `dotenv` is loaded in `server.js` before anything uses env values.
 
 | Variable | Required | Notes |
 |---|---|---|
@@ -106,7 +106,7 @@ Backend reads `Server/.env`. `dotenv` is loaded in `server.js` before anything u
 17. **Academic year** is derived as `YYYY-(YYYY+1)` from `SchoolConfig.sessionStartDate`.
 18. **Notices filters:** student sees `all/student`; teacher sees `all/student/teacher`; admin and parent see everything.
 19. **Uploads use memory storage**, then stream to Cloudinary. No local `uploads/` directory is used.
-20. **Production serves the SPA** from `AdminPanel/ and Website/dist` with an API-aware fallback. Build the frontend before starting the backend in production.
+20. **Production serves the SPA** from `frontend/dist` with an API-aware fallback. Build the frontend before starting the backend in production.
 
 ### 4.2 Frontend
 
@@ -117,7 +117,7 @@ Backend reads `Server/.env`. `dotenv` is loaded in `server.js` before anything u
 5. **Legacy URLs redirect** (`/student/*`, `/teacher/*`, `/admin/*`, `/public/*`) — keep them working when adding routes.
 6. **Tailwind 4 tokens** are defined with `@theme` in `src/index.css`; there is no `tailwind.config.js`. Use `brand-*`, `brass-*`, `slate-*`.
 7. **Fonts are self-hosted** through Fontsource imports in `main.jsx` to satisfy the backend CSP. Do not add CDN fonts/scripts.
-8. **`Profile` restricts name/email edits to parents**; other roles can only change the profile image.
+8. **Teacher and student self-profiles are read-only**; admin and parent users may update their own name and photo. Email changes remain admin-managed.
 9. **Pagination is client-side** (`usePagination` + `Pagination`); pages fetch full lists.
 10. **Toasts must be pushed via `useToast()`**, not `alert()`.
 11. **`AppShell` requires a non-null user** and renders navigation from `NAV[user.role]`.
@@ -229,24 +229,24 @@ Grade scale: A+ ≥90, A ≥80, B ≥70, C ≥60, D ≥50, F <50.
 
 | Concern | File |
 |---|---|
-| Server bootstrap + middleware order | `Server/server.js` |
-| DB connection | `Server/config/db.js` |
-| Auth controller | `Server/controllers/authController.js` |
-| JWT/cookies/roles | `Server/middleware/auth.js` |
-| Teacher scope | `Server/middleware/assignments.js` |
-| Zod schemas | `Server/middleware/validate.js` |
-| CSRF | `Server/middleware/csrf.js` |
-| NoSQL sanitize | `Server/middleware/sanitize.js` |
-| Payments | `Server/services/payment.js` |
-| Public/admissions | `Server/routes/publicRoutes.js` |
-| Gradebook | `Server/routes/gradebookRoutes.js` |
-| Frontend routes | `AdminPanel/ and Website/src/App.jsx` |
-| API client | `AdminPanel/ and Website/src/core/api.js` |
-| Auth state | `AdminPanel/ and Website/src/context/AuthContext.jsx` |
-| Toasts | `AdminPanel/ and Website/src/context/ToastContext.jsx` |
-| Nav config | `AdminPanel/ and Website/src/components/layout/navConfig.js` |
-| Design tokens | `AdminPanel/ and Website/src/index.css` |
-| UI primitives | `AdminPanel/ and Website/src/components/ui.jsx` |
+| Server bootstrap + middleware order | `backend/server.js` |
+| DB connection | `backend/config/db.js` |
+| Auth controller | `backend/controllers/authController.js` |
+| JWT/cookies/roles | `backend/middleware/auth.js` |
+| Teacher scope | `backend/middleware/assignments.js` |
+| Zod schemas | `backend/middleware/validate.js` |
+| CSRF | `backend/middleware/csrf.js` |
+| NoSQL sanitize | `backend/middleware/sanitize.js` |
+| Payments | `backend/services/payment.js` |
+| Public/admissions | `backend/routes/publicRoutes.js` |
+| Gradebook | `backend/routes/gradebookRoutes.js` |
+| Frontend routes | `frontend/src/App.jsx` |
+| API client | `frontend/src/core/api.js` |
+| Auth state | `frontend/src/context/AuthContext.jsx` |
+| Toasts | `frontend/src/context/ToastContext.jsx` |
+| Nav config | `frontend/src/components/layout/navConfig.js` |
+| Design tokens | `frontend/src/index.css` |
+| UI primitives | `frontend/src/components/ui.jsx` |
 
 ---
 
@@ -263,7 +263,7 @@ Grade scale: A+ ≥90, A ≥80, B ≥70, C ≥60, D ≥50, F <50.
 | D7 | Sandbox-only payments | Safe development without gateway credentials | Not production-capable for real money |
 | D8 | Self-hosted fonts + strict CSP | No third-party script/style origins | Font packages must be installed |
 | D9 | Parent is the public registration role | Prevents self-assigned privileged roles | No parent↔child link yet |
-| D10 | Production Express serves `AdminPanel/ and Website/dist` | One origin simplifies cookies/CORS/CSP | Must build frontend before deploy |
+| D10 | Production Express serves `frontend/dist` | One origin simplifies cookies/CORS/CSP | Must build frontend before deploy |
 
 ---
 
@@ -325,3 +325,4 @@ See [TRACKER.md](./TRACKER.md) for full detail. Highlights:
 7. Backend has no test/lint script; at minimum start the server and exercise the changed route.
 8. Update `MEMORY.md` and `TRACKER.md` when behavior or status changes.
 9. Do not commit unless the user explicitly asks.
+# Updated - Clean Slate Build Complete

@@ -25,7 +25,7 @@ These rules are mandatory for all contributors (human or AI). When in doubt, pre
 
 ### 2.1 Secrets and configuration
 
-- `.env` files are git-ignored. Use `Server/.env.example` for placeholders only.
+- `.env` files are git-ignored. Use `backend/.env.example` for placeholders only.
 - Never log secrets, tokens, passwords, 2FA secrets, or full connection strings.
 - `JWT_SECRET` must be present and ≥32 characters in production.
 - Use least-privilege database users; avoid sharing production credentials.
@@ -86,7 +86,7 @@ These rules are mandatory for all contributors (human or AI). When in doubt, pre
 ### 3.1 Structure
 
 - Keep cross-cutting logic in `middleware/`, schemas in `middleware/validate.js`, provider logic in `services/`.
-- New domain routes go in `Server/routes/` and are mounted in `server.js`.
+- New domain routes go in `backend/routes/` and are mounted in `server.js`.
 - Extract a controller only when a route file becomes hard to maintain; otherwise follow the existing inline style.
 - Keep the middleware order in `server.js` intact unless the change is explicitly about ordering.
 - Remember route mount order: `/api/teacher` precedes `/api` (assignments).

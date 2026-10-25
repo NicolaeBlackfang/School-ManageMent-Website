@@ -1,7 +1,7 @@
 # Architecture
 
 **Project:** Scholaris — School Management System
-**Last updated:** 2026-10-23
+**Last updated:** 2026-10-25
 **Related docs:** [PRD.md](./PRD.md) · [DESIGN.md](./DESIGN.md) · [MEMORY.md](./MEMORY.md) · [RULES.md](./RULES.md) · [TRACKER.md](./TRACKER.md)
 
 ---
@@ -50,7 +50,7 @@
 | 2FA | speakeasy + qrcode | ^2.0.0 / ^1.5.4 | TOTP with ±1 window |
 | Uploads | multer + cloudinary | ^2.3.0 / ^2.11.0 | Memory storage streams to Cloudinary |
 | Email | nodemailer | ^10.0.10 | Optional SMTP transport |
-| Security | helmet, cors, express-rate-limit, cookie-parser, mongo-sanitize | see `Server/package.json` | See §11 |
+| Security | helmet, cors, express-rate-limit, cookie-parser, mongo-sanitize | see `backend/package.json` | See §11 |
 
 ---
 
@@ -67,7 +67,7 @@ school-management-system/
 │   ├── MEMORY.md
 │   ├── RULES.md
 │   └── TRACKER.md
-├── Server/
+├── backend/
 │   ├── server.js                # Bootstrap, middleware, routes, listener
 │   ├── config/
 │   │   ├── db.js                # Mongo connection (MONGODB_URI || MONGO_URI)
@@ -87,7 +87,7 @@ school-management-system/
 │   ├── utils/rolls.js           # Roll number reindexing
 │   ├── .env.example
 │   └── package.json
-└── AdminPanel/ and Website/
+└── frontend/
     ├── vite.config.js           # React plugin, PostCSS, /api proxy
     ├── package.json
     └── src/
@@ -99,6 +99,14 @@ school-management-system/
         ├── components/          # ui, icons, layouts, pagination, 2FA modal
         └── pages/               # Role-grouped screens
 ```
+
+### 3.1 Frontend loading and account profile
+
+- Public and portal route components use `React.lazy` and share a labeled `Suspense` loading state. Screens are downloaded when visited instead of shipping all role dashboards in the first JavaScript bundle.
+- Login and Signup share `components/auth/AuthFrame.jsx`; `/register` remains a redirect to `/signup` for existing bookmarks.
+- `ProfilePhotoPicker` validates image type and source size, resizes the image to a 320-pixel edge in the browser, and sends a bounded JPEG data URL. The API accepts a bounded JPEG/PNG/WebP data URL or an HTTPS image URL.
+- Admin and parent users can update their own display name and photo at `PUT /api/auth/profile`; teacher and student self-profile updates are rejected by the API. Email remains read-only and requires a separate verified admin flow.
+- Administrators can add/edit teacher and student photos. Teachers can add a student's photo during creation or edit it within their assigned class. Role and class authorization remain server-enforced.
 
 ---
 
@@ -121,17 +129,17 @@ Browser → localhost:5173 (Vite)
 ```
 Browser ──HTTPS──► Express (one origin)
                      ├── /api/*  → REST handlers
-                     └── /*      → AdminPanel/ and Website/dist/index.html (SPA fallback)
+                     └── /*      → frontend/dist/index.html (SPA fallback)
 ```
 
-- `NODE_ENV=production` enables static serving of `AdminPanel/ and Website/dist`, HSTS, and secure cookies.
+- `NODE_ENV=production` enables static serving of `frontend/dist`, HSTS, and secure cookies.
 - `TRUST_PROXY=true` when behind one reverse proxy (correct client IP + secure cookie handling).
 
 ### 4.3 Middleware pipeline (order matters)
 
-`Server/server.js` applies, in order:
+`backend/server.js` applies, in order:
 
-1. `dotenv.config({ path: Server/.env })`
+1. `dotenv.config({ path: backend/.env })`
 2. Fail-fast checks (`JWT_SECRET` present; length in production; sandbox warning)
 3. `app.disable('x-powered-by')`
 4. `trust proxy` (if `TRUST_PROXY=true`)
@@ -367,7 +375,7 @@ Cloudinary config requires `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUD
 
 ## 10. Configuration reference
 
-All backend variables live in `Server/.env` (ignored by git). Use `Server/.env.example` as the template.
+All backend variables live in `backend/.env` (ignored by git). Use `backend/.env.example` as the template.
 
 | Variable | Required | Purpose |
 |---|---|---|
@@ -426,7 +434,7 @@ Known gaps are tracked in [TRACKER.md](./TRACKER.md).
 | `npm run backend` | root | Backend watch mode |
 | `npm run frontend` | root | Vite dev server |
 | `npm start` | backend | Production server (`node server.js`) |
-| `npm run build` | frontend | Build SPA to `AdminPanel/ and Website/dist` |
+| `npm run build` | frontend | Build SPA to `frontend/dist` |
 | `npm run lint` | frontend | ESLint |
 | `npm run seed:admin` | backend | Bootstrap/promote an admin |
 | `node scripts/backfillAssignments.js [--apply]` | backend | Backfill Assignment rows (dry run by default) |

@@ -1,28 +1,20 @@
 {
-  "name": "school-management-system",
+  "name": "scholaris-school-management",
   "version": "2.0.0",
-  "private": true,
-  "description": "Scholaris — school management platform (Server + AdminPanel + Website)",
+  "description": "Scholaris School Management System",
   "scripts": {
-    "server": "npm run dev --prefix Server",
-    "admin": "npm run dev --prefix AdminPanel",
-    "website": "npm run dev --prefix Website",
-    "backend": "npm run server",
-    "frontend": "npm run website",
-    "dev": "concurrently -n server,admin,website -c blue,magenta,green \"npm run server\" \"npm run admin\" \"npm run website\"",
-    "install:all": "npm install --prefix Server && npm install --prefix AdminPanel && npm install --prefix Website",
-    "build": "npm run build --prefix Website && npm run build --prefix AdminPanel",
-    "lint": "npm run lint --prefix AdminPanel && npm run lint --prefix Website"
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
+    "backend": "cd backend && npm run dev",
+    "frontend": "cd frontend && npm run dev",
+    "server": "npm run backend",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "build": "cd frontend && npm run build",
+    "start": "cd backend && npm start"
   },
   "devDependencies": {
-    "concurrently": "^10.0.5"
+    "concurrently": "^8.2.2"
   },
-  "keywords": [
-    "school-management",
-    "cms",
-    "express",
-    "react",
-    "mongodb"
-  ],
+  "keywords": ["school", "management", "education"],
+  "author": "",
   "license": "ISC"
 }

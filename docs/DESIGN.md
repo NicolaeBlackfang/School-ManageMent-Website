@@ -1,7 +1,7 @@
 # Design System and UX Guide
 
 **Product:** Scholaris — School Management System
-**Last updated:** 2026-10-23
+**Last updated:** 2026-10-25
 **Related docs:** [PRD.md](./PRD.md) · [ARCHITECTURE.md](./ARCHITECTURE.md) · [MEMORY.md](./MEMORY.md) · [RULES.md](./RULES.md) · [TRACKER.md](./TRACKER.md)
 
 ---
@@ -35,7 +35,7 @@
 
 ## 3. Design tokens
 
-Defined in `AdminPanel/Website/src/index.css` via Tailwind 4 `@theme`.
+Defined in `frontend/src/index.css` via Tailwind 4 `@theme`.
 
 ### 3.1 Color
 
@@ -219,6 +219,24 @@ Standard content pages use:
 - `role="alert"` + `aria-live="assertive"` for errors; `status`/`polite` otherwise.
 - `useToast()` returns a safe no-op outside a provider.
 
+### 5.4 Login and Signup
+
+- The account screens share the same responsive `AuthFrame`: a deep-indigo school story panel on desktop, a compact wordmark on mobile, and the same raised white form card.
+- The page actions are named **Login** and **Sign up**. Public Signup is for parents/guardians and includes email verification before account details.
+- Small ambient motion and entrance transitions reinforce the shared experience. Focus indicators remain visible, labels are explicit, status/errors use live regions, and reduced-motion preferences are honored by the global motion styles.
+- Login and portal pages are route-split. A labeled loading state appears while a page chunk loads; the first screen does not load every admin, teacher, student, and public module.
+
+### 5.5 Profiles, photos, and pagination
+
+- Students and teachers can view profile details but cannot change their name or photo. Admin and parent accounts can update their display name and photo; email is read-only and changed through a verified school-admin process.
+- Photos are selected as JPG, PNG, or WebP, limited to 5 MB before processing, resized to a 320-pixel edge, and compressed before the request. A clear/remove action and initials fallback make the state visible.
+- Admins can add photos while creating teacher/student accounts and change them from the account editor. Teachers can add/change a student photo during creation or in the class-scoped student editor.
+- Pagination is fixed at 10 records per page; there is no page-size selector. It keeps the current range visible, adds first/last controls on larger screens, collapses to a compact page counter on mobile, and exposes current page and navigation labels to assistive technology.
+- The admin **Public content studio** manages news and announcements, gallery items, public pages, facilities, academic information, and header/footer links. **Website settings** controls homepage text, school identity, contact/social links, branding images, and founder profiles.
+- The public mobile navigation uses a document-level modal drawer with focus management; it is unmounted when closed so hidden controls cannot retain keyboard focus. The signed-in mobile bottom bar and content padding account for device safe areas.
+- The public admission navigation item and page are available only while the administrator has opened admissions. Application submission and fee payment require the owning signed-in guardian account.
+- Network, timeout, rate-limit, oversized upload, permission, missing-record, and server errors are translated to clear next steps. Expected request failures are shown inline or as accessible notifications rather than printed to the browser console.
+
 ---
 
 ## 6. Page inventory
@@ -227,7 +245,7 @@ Standard content pages use:
 
 | Route | Page | Purpose / key elements |
 |---|---|---|
-| `/` | `PublicPortal` | Hero from `SchoolInfo`, stats band, CTA to admission/founders |
+| `/` | `PublicPortal` | Editable school identity, homepage copy, mission/vision, stats band, and CTA to admission/founders |
 | `/admission` | `PublicAdmission` | 3-step stepper (Details → Fee → Receipt), dual-language form, class select, MFS method + txn ID, printable receipt |
 | `/founders` | `PublicFounders` | Board cards with photo, designation, quote |
 | `/login` | `Login` | Split layout: brand panel + form; 2FA modal when required |
@@ -287,7 +305,7 @@ Standard content pages use:
 |---|---|
 | Student | Overview · Notices · Report Card · Attendance |
 | Teacher | Overview · My Roster · Attendance · Analytics · Gradebook · Notices · Add Student |
-| Admin | Overview · All Users · Create User · Assignments · Notices · Admissions · Public Website · Settings |
+| Admin | Overview · All Users · Create User · Assignments · Notices · Admissions · Website Settings · Public Content · Settings |
 | Parent | Overview |
 
 Role landings: `/a/dashboard`, `/t/dashboard`, `/s/dashboard`, `/p/home`. Unauthorized role access redirects to the user's own landing.
@@ -302,7 +320,7 @@ Role landings: `/a/dashboard`, `/t/dashboard`, `/s/dashboard`, `/p/home`. Unauth
 - Required fields rely on native `required` plus server-side Zod validation.
 - Inline `MessageBanner` for form-level errors; toasts for async results.
 - Buttons show disabled/loading states and prevent double-submit via `submitting`/`loading`.
-- File inputs accept images; profile photo is capped at 1 MB client-side and converted to a data URL.
+- Profile photo uploads accept JPG, PNG, and WebP files up to 5 MB before browser-side resizing and compression to a bounded data URL.
 
 ### 8.2 Tables and lists
 

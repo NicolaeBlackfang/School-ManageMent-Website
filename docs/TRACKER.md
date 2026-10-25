@@ -1,7 +1,7 @@
 # Project Tracker
 
 **Project:** Scholaris — School Management System
-**Last updated:** 2026-10-23
+**Last updated:** 2026-10-25
 **Status:** Working MVP · no automated tests or CI
 **Related docs:** [PRD.md](./PRD.md) · [ARCHITECTURE.md](./ARCHITECTURE.md) · [DESIGN.md](./DESIGN.md) · [MEMORY.md](./MEMORY.md) · [RULES.md](./RULES.md)
 
@@ -293,6 +293,8 @@ Severity: **P0** critical · **P1** high · **P2** medium · **P3** low.
 |---|---|
 | 2026-10-23 | Fixed Mongo env mismatch: code now accepts `MONGODB_URI` or `MONGO_URI` (`config/db.js`, `scripts/seed-admin.js`, `scripts/backfillAssignments.js`) |
 | 2026-10-23 | Added `docs/`: PRD, ARCHITECTURE, DESIGN, MEMORY, RULES, TRACKER |
+| 2026-10-25 | Shared animated Login/Signup design, signup route naming, route-level lazy loading, profile photo/detail editing, modern responsive pagination, and user-readable API errors |
+| 2026-10-25 | Teacher/student self-profile locked; guardian-owned admissions with admin intake switch, application tracking, seven-day rejected-record expiry, and roster creation on approval |
 | — | Public website + founders + admission flow + receipt |
 | — | Sandbox payment adapter with production guard |
 | — | Admin user CRUD, roles, credential reset, delete with password |
@@ -315,3 +317,7 @@ Severity: **P0** critical · **P1** high · **P2** medium · **P3** low.
 4. Keep **Module status** consistent with the checklists.
 5. Reference the relevant doc if a change affects architecture or design.
 6. Do not mark security items done without verifying the failure paths.
+Updated on Sat Oct 24 09:50:26 PM +06 2026
+
+| 2026-10-25 | Removed personal names from form examples, replaced unverified public-page filler with neutral school copy, and aligned README/docs and ignore rules with current backend/frontend layout and profile/admission permissions |
+| 2026-10-25 | Added admin controls for public news, announcements, gallery, pages, facilities, academic information, and navigation; fixed pagination at 10 items; improved mobile drawer focus handling and public-site content controls |

@@ -59,7 +59,7 @@ There is currently no analytics/telemetry pipeline; success is measured qualitat
 | **Teacher** | Manage assigned classes | Roster, attendance (class-teacher classes), attendance analytics, gradebook (assigned class+subject), publish results (class teacher), add/edit/delete students in class-teacher scope, notices |
 | **Student** | Track own progress | Dashboard, published grades, personal attendance calendar, notices |
 | **Parent** | Follow their child and school news | Notices, profile management (name/email/photo), 2FA. No child linkage yet |
-| **Public visitor** | Learn about and apply to the school | Landing page, founder profiles, admission application, sandbox fee payment, printable receipt |
+| **Public visitor** | Learn about the school | Public pages, announcements, and school information |
 
 > Public self-registration always creates a **parent** account. Admin and teacher accounts can only be created by an admin. Students are created by admins or by their class teacher.
 
@@ -69,7 +69,7 @@ There is currently no analytics/telemetry pipeline; success is measured qualitat
 
 ### 5.1 In scope (implemented)
 
-1. **Public website** with editable welcome text, about text, banner, logo, admission fee, and founder profiles.
+1. **Public website** with admin-managed homepage identity and copy, mission/vision, contact/social links, banner, logo, founder profiles, news, announcements, gallery, public pages, facilities, academic information, and navigation.
 2. **Admissions funnel** with dual-language student/parent details, server-priced fee, MFS-style payment capture, and printable receipt.
 3. **Authentication and sessions** using HttpOnly cookies, bcrypt passwords, optional TOTP 2FA, and CSRF protection.
 4. **Admin console** for users, roles, credentials, assignments, school config, notices, website content, and applications.
@@ -145,7 +145,7 @@ Status legend: **Done** = implemented end-to-end · **Partial** = implemented wi
 | FR-AUTH-04 | 2FA login uses a short-lived pre-auth token before issuing a session. | Done |
 | FR-AUTH-05 | Sessions expire (default 8h) and logout clears session cookies. | Done |
 | FR-AUTH-06 | Admin can reset a user's password and edit role/profile. | Done |
-| FR-AUTH-07 | Users can update their profile; only parents may change name/email. | Done |
+| FR-AUTH-07 | Admins and parents can update their own name and photo; teacher/student self-profiles are read-only and email is managed through a verified admin process. | Done |
 | FR-AUTH-08 | Self-service password reset / change. | Planned |
 | FR-AUTH-09 | Email verification on registration or email change. | Planned |
 | FR-AUTH-10 | Per-account lockout, session revocation, 2FA recovery codes. | Planned |
@@ -195,7 +195,7 @@ Status legend: **Done** = implemented end-to-end · **Partial** = implemented wi
 | ID | Requirement | Status |
 |---|---|---|
 | FR-PAR-01 | View school notices. | Done |
-| FR-PAR-02 | Update own name, email, and profile photo. | Done |
+| FR-PAR-02 | Update own display name and profile photo; email stays read-only. | Done |
 | FR-PAR-03 | Enable/disable 2FA. | Done |
 | FR-PAR-04 | Link to a child and view child records. | Planned |
 
@@ -213,15 +213,15 @@ Status legend: **Done** = implemented end-to-end · **Partial** = implemented wi
 
 ### 7.1 Admission → payment → receipt
 
-1. Visitor opens `/admission`.
+1. A guardian signs in and opens `/admission` while admissions are enabled by an administrator.
 2. Classes are loaded from `GET /api/config`.
-3. Visitor submits the form → `POST /api/public/apply`.
+3. The signed-in guardian submits the form → `POST /api/public/apply`; anonymous and non-parent submissions are rejected.
 4. Server applies the configured fee and validates the target class.
 5. Server returns `applicationId` + `payableAmount`.
-6. Visitor enters payment method and transaction ID → `POST /api/public/pay-admission/:appId`.
+6. The owning guardian enters payment method and transaction ID → `POST /api/public/pay-admission/:appId`.
 7. Server verifies through the payment adapter and marks the application paid.
 8. Visitor sees a printable receipt (`window.print` friendly layout).
-9. Admin reviews in `/a/approvals` and can approve/reject.
+9. Admin reviews in `/a/approvals`; approval creates a class roster student record and rejection records an expiry seven days later. Guardians can track the application in their portal; rejected applications advise them to contact the institute.
 
 ### 7.2 Teacher attendance
 

@@ -1,61 +1,90 @@
 # Scholaris School Management System
 
-Scholaris is a full-stack school management platform split into three apps with a shared Express API.
+A full-stack school platform for academic administration, guardian admissions, attendance, results, and school communications.
 
-## Architecture
+## Project Structure
 
 ```
-school-management-system/
-├── Server/       # Express 5 + MongoDB/Mongoose API (CommonJS)
-├── AdminPanel/   # Vite + React admin/teacher console (runs at /admin in prod)
-└── Website/      # Vite + React public site + student/parent portal
+scholaris-school-management/
+├── backend/         # Express 5 API and MongoDB models
+├── frontend/        # React public site and role-based portals
+└── docs/           # Project Documentation
 ```
 
-## Quick start (development)
+## Features
 
-1. Copy env files and fill in secrets:
-   - `Server/.env` from `Server/.env.example`
-2. Install all dependencies:
-   ```bash
-   npm run install:all
-   ```
-3. Run everything together (Server :5000, AdminPanel :5174, Website :5175):
-   ```bash
-   npm run dev
-   ```
-   Or run individually: `npm run server`, `npm run admin`, `npm run website`.
+### Security
+- JWT Authentication with HttpOnly cookies
+- Two-Factor Authentication (2FA) with AES-256 encryption
+- CSRF Protection (Double-submit cookie pattern)
+- Rate Limiting
+- Account Lockout after failed login attempts
+- Password reset with email tokens
+- Input sanitization and validation with Zod
 
-## Production
+### Accounts and profiles
+- Shared animated **Login** and parent/guardian **Sign up** screens with email verification
+- Students and teachers can view their profiles; admins and parents can update their own display name and photo
+- Administrators can add/edit teacher and student photos; teachers can edit photos for students in their assigned class
+- Lazy-loaded role pages and responsive pagination for faster, clearer navigation
 
-Build both frontends:
+### Role-based portals
+- Administration, teacher, student, and guardian workspaces
+- User management, class assignments, and school settings
+- Attendance, gradebooks, admissions review, and notices
+
+### Public school website
+- School information and published leadership profiles
+- Notices, news, and photo gallery
+- Guardian-only admission applications during the configured intake period
+- Login and guardian account registration
+
+## Quick Start
+
+### Installation
 ```bash
-npm run build
+# Install all dependencies
+npm run install:all
 ```
-In production the API serves:
-- `Website/dist` at `/` (public site + student/parent portal)
-- `AdminPanel/dist` at `/admin` (admin/teacher console)
 
-## Key security features
+### Development
+```bash
+# Run the API and React application
+npm run dev
+```
 
-- HttpOnly session cookies + CSRF double-submit tokens (axios reads the `csrf` cookie automatically)
-- Optional TOTP 2FA with AES-256-GCM encrypted secrets
-- Per-account login lockout after repeated failures
-- Email-token password reset + authenticated password change (revokes older sessions on reset/change)
-- Zod request validation + query sanitation
-- Server-controlled admission fees; payments are idempotent, reject `Paid/Waived/Rejected`, and use a swappable provider adapter
+### Individual Services
+```bash
+npm run backend  # Backend API
+npm run frontend # Public site and role-based portals
+```
 
-## Content management
+## Environment Setup
 
-The website uses a WordPress-style CMS:
-- Site identity, navigation menu (header/footer with dropdowns/reorder), pages, news/notices/announcements
-- Gallery, facilities, academic sections
-- Content is managed from `AdminPanel` → Content Studio (`/a/cms`); public endpoints under `/api/public/*` and `/api/public/site|menu`
+1. Copy `backend/.env.example` to `backend/.env` and configure:
+   - MongoDB connection string
+   - JWT secret
+   - Encryption keys
+   - Cloudinary credentials
+   - Email settings
+
+2. Seed admin user:
+```bash
+cd backend && npm run seed:admin
+```
+
+## Technology Stack
+
+**Backend:** Node.js, Express 5, MongoDB, Mongoose, JWT, bcryptjs
+**Frontend:** React 19, Vite, Tailwind CSS, React Router
+**Security:** Helmet, CORS, express-rate-limit, crypto
 
 ## Documentation
 
-See `docs/` for `PRD.md`, `ARCHITECTURE.md`, `DESIGN.md`, `MEMORY.md`, `RULES.md`, `TRACKER.md`.
-
-## Notes
-
-- `ui-ux-pro-max-local/` is an existing local design-system skill (nested `.git`) — referenced for UI/UX guidance.
-- AdminPanel and Website contain their own `node_modules/` (untracked). Do **not** commit secrets or `.env` files.
+See the `docs/` folder for detailed documentation:
+- [PRD.md](docs/PRD.md) - Product Requirements
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md) - System Architecture
+- [DESIGN.md](docs/DESIGN.md) - Design Guidelines
+- [RULES.md](docs/RULES.md) - Development Rules
+- [TRACKER.md](docs/TRACKER.md) - Project Tracker
+- [MEMORY.md](docs/MEMORY.md) - Project Memory
