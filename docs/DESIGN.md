@@ -35,7 +35,7 @@
 
 ## 3. Design tokens
 
-Defined in `frontend/src/index.css` via Tailwind 4 `@theme`.
+Defined in `AdminPanel/Website/src/index.css` via Tailwind 4 `@theme`.
 
 ### 3.1 Color
 

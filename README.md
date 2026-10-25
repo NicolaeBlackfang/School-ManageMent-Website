@@ -1,51 +1,61 @@
-# School Management System (Under Development 🚧)
+# Scholaris School Management System
 
-A web application designed to streamline academic operations, manage user data, and track student progress. This project is currently in its active development phase and features a decoupled architecture with a **React + Vite** frontend and a dedicated backend service.
+Scholaris is a full-stack school management platform split into three apps with a shared Express API.
 
----
+## Architecture
 
-## 🛠️ Current Features
-
-### 🔑 Authentication & Admin Operations
-* **Secure Access:** Fully integrated user login and sign-up features for tailored workspace access.
-* **Admin Control Center:** Centralized panel for administrators to register, modify, and add new **teachers** and **students** to the system.
-
-### 📅 Attendance & Tracking System
-* **Teacher Roll Call:** Dedicated module allowing teachers to mark student attendance effortlessly.
-* **Status Tracker:** Live database tracking to monitor whether students are **Present**, **Late**, or **Absent**.
-
-### 📝 Academic & Communication Modules
-* **Notice Board:** A central dashboard feed for publishing general announcements, holiday notices, and important news.
-* **Result System:** A digital grading portal for processing and displaying academic performance marks.
-
----
-
-## 🚀 Getting Started
-
-Follow these steps to install dependencies and boot up both environments simultaneously from the root.
-
-### Prerequisites
-* **Node.js** (v18 or higher recommended)
-* **npm** or **yarn** package manager
-
-### 1. Installation
-Run this command in the **root folder** to install all required dependencies across the project:
-```bash
-npm install
+```
+school-management-system/
+├── Server/       # Express 5 + MongoDB/Mongoose API (CommonJS)
+├── AdminPanel/   # Vite + React admin/teacher console (runs at /admin in prod)
+└── Website/      # Vite + React public site + student/parent portal
 ```
 
-### 2. Run the Application
-Start both the **Vite frontend** and **Nodemon backend server** with a single command from the root directory:
+## Quick start (development)
+
+1. Copy env files and fill in secrets:
+   - `Server/.env` from `Server/.env.example`
+2. Install all dependencies:
+   ```bash
+   npm run install:all
+   ```
+3. Run everything together (Server :5000, AdminPanel :5174, Website :5175):
+   ```bash
+   npm run dev
+   ```
+   Or run individually: `npm run server`, `npm run admin`, `npm run website`.
+
+## Production
+
+Build both frontends:
 ```bash
-npm run dev
+npm run build
 ```
-* Open your browser and navigate to the local URL provided by Vite (typically `http://localhost:5173`).
+In production the API serves:
+- `Website/dist` at `/` (public site + student/parent portal)
+- `AdminPanel/dist` at `/admin` (admin/teacher console)
 
----
+## Key security features
 
-## 🧪 Development Tech Stack
+- HttpOnly session cookies + CSRF double-submit tokens (axios reads the `csrf` cookie automatically)
+- Optional TOTP 2FA with AES-256-GCM encrypted secrets
+- Per-account login lockout after repeated failures
+- Email-token password reset + authenticated password change (revokes older sessions on reset/change)
+- Zod request validation + query sanitation
+- Server-controlled admission fees; payments are idempotent, reject `Paid/Waived/Rejected`, and use a swappable provider adapter
 
-* **Frontend:** React, Vite, HTML5, CSS3/Tailwind, JavaScript (ES6+)
-* **Backend:** Node.js, Express, Nodemon (for hot-reloading)
-* **Monorepo Tools:** Concurrently / npm workspaces (for single-command execution)
-* **Database:** *[Pending Database Configuration]*
+## Content management
+
+The website uses a WordPress-style CMS:
+- Site identity, navigation menu (header/footer with dropdowns/reorder), pages, news/notices/announcements
+- Gallery, facilities, academic sections
+- Content is managed from `AdminPanel` → Content Studio (`/a/cms`); public endpoints under `/api/public/*` and `/api/public/site|menu`
+
+## Documentation
+
+See `docs/` for `PRD.md`, `ARCHITECTURE.md`, `DESIGN.md`, `MEMORY.md`, `RULES.md`, `TRACKER.md`.
+
+## Notes
+
+- `ui-ux-pro-max-local/` is an existing local design-system skill (nested `.git`) — referenced for UI/UX guidance.
+- AdminPanel and Website contain their own `node_modules/` (untracked). Do **not** commit secrets or `.env` files.

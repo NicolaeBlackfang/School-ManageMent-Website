@@ -1,34 +1,28 @@
 {
-  "devDependencies": {
-    "autoprefixer": "^10.5.4",
-    "concurrently": "^10.0.5",
-    "postcss": "^8.5.26",
-    "tailwindcss": "^4.3.3"
-  },
   "name": "school-management-system",
-  "version": "1.0.0",
-  "main": "index.js",
-  "dependencies": {
-    "baseline-browser-mapping": "^2.11.20",
-    "browserslist": "^4.28.8",
-    "caniuse-lite": "^1.0.30001810",
-    "electron-to-chromium": "^1.5.420",
-    "escalade": "^3.2.0",
-    "fraction.js": "^5.3.4",
-    "nanoid": "^3.3.18",
-    "node-releases": "^2.0.54",
-    "picocolors": "^1.1.1",
-    "postcss-value-parser": "^4.2.0",
-    "source-map-js": "^1.2.1",
-    "update-browserslist-db": "^1.3.2"
-  },
+  "version": "2.0.0",
+  "private": true,
+  "description": "Scholaris — school management platform (Server + AdminPanel + Website)",
   "scripts": {
-    "backend": "npm run dev --prefix backend",
-    "frontend": "npm run dev --prefix frontend",
-    "dev": "concurrently \"npm run backend\" \"npm run frontend\""
+    "server": "npm run dev --prefix Server",
+    "admin": "npm run dev --prefix AdminPanel",
+    "website": "npm run dev --prefix Website",
+    "backend": "npm run server",
+    "frontend": "npm run website",
+    "dev": "concurrently -n server,admin,website -c blue,magenta,green \"npm run server\" \"npm run admin\" \"npm run website\"",
+    "install:all": "npm install --prefix Server && npm install --prefix AdminPanel && npm install --prefix Website",
+    "build": "npm run build --prefix Website && npm run build --prefix AdminPanel",
+    "lint": "npm run lint --prefix AdminPanel && npm run lint --prefix Website"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": ""
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  },
+  "keywords": [
+    "school-management",
+    "cms",
+    "express",
+    "react",
+    "mongodb"
+  ],
+  "license": "ISC"
 }

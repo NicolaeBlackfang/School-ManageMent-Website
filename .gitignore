@@ -7,24 +7,40 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# MERN Dependency & Build Folders
+# Dependencies
 node_modules/
-frontend/node_modules/
-backend/node_modules/
-frontend/dist/
-frontend/build/
-backend/dist/
+**/node_modules/
 
-# Ignore local uploaded files/notices
-backend/uploads/
-**/uploads/
+# Build artifacts
+dist/
+**/dist/
+build/
+**/build/
+.vite/
+**/.vite/
 
-# Environment / Secret Files
+# Environment / secret files
 .env
-.env.local
-atlas-credentials.env
+.env.*
+!.env.example
 **/.env
-*.local
+**/.env.*
+!**/.env.example
+atlas-credentials.env
+*.pem
+*.key
+
+# Local uploaded files / sensitive assets
+uploads/
+**/uploads/
+Server/uploads/
+**/private-uploads/
+
+# Coverage / test output
+coverage/
+**/coverage/
+playwright-report/
+test-results/
 
 # Editor directories and files
 .vscode/*
