@@ -9,7 +9,7 @@ const request = async (operation, fallback) => {
   }
 };
 
-export const getCurrentUser = () => api.get('/auth/me');
+export const getCurrentUser = () => api.get('/auth/session');
 
 export const signIn = (email, password) =>
   request(() => api.post('/auth/login', { email, password }), 'Login failed. Please check your credentials.');

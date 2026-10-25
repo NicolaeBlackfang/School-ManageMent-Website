@@ -399,6 +399,7 @@ module.exports = {
   registerUser,
   loginUser,
   getMe,
+  publicUser,
   logoutUser,
   setupTwoFactor,
   verifyTwoFactor,

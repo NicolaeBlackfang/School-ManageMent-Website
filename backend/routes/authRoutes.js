@@ -6,6 +6,7 @@ const {
   registerUser,
   loginUser,
   getMe,
+  publicUser,
   logoutUser,
   setupTwoFactor,
   verifyTwoFactor,
@@ -38,6 +39,11 @@ router.post('/forgot-password', validate(schemas.forgotPassword), requestPasswor
 router.post('/reset-password', validate(schemas.resetPassword), resetPassword);
 
 // Session bootstrap + lifecycle
+// Anonymous-safe bootstrap avoids using a protected endpoint for the normal
+// signed-out landing state (which would otherwise create a visible 401 request).
+router.get('/session', softAuth, (req, res) => {
+  res.json({ success: true, user: req.user ? publicUser(req.user) : null });
+});
 router.get('/me', protect, getMe);
 router.post('/logout', protect, logoutUser);
 router.put('/change-password', protect, validate(schemas.changePassword), async (req, res) => {
